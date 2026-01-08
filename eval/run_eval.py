@@ -261,7 +261,32 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
     try:
         from datasets import Dataset
         from ragas import evaluate
-        from ragas.metrics import answer_relevancy, context_precision, faithfulness
+        from ragas.llms import LangchainLLMWrapper
+        from ragas.metrics._answer_relevance import AnswerRelevancy
+        from ragas.metrics._context_precision import ContextPrecision
+        from ragas.metrics._faithfulness import Faithfulness
+
+        from app.core.config import settings
+
+        # Configure LLM for ragas evaluation
+        if not settings.openai_api_key:
+            print("Warning: OPENAI_API_KEY not set, skipping Ragas metrics")
+            return None
+
+        # Use langchain's ChatOpenAI for ragas
+        from langchain_openai import ChatOpenAI
+
+        llm = LangchainLLMWrapper(
+            ChatOpenAI(
+                model=settings.openai_model,
+                api_key=settings.openai_api_key,  # type: ignore[arg-type]
+            )
+        )
+
+        # Initialize metrics with the LLM
+        faithfulness = Faithfulness(llm=llm)
+        answer_relevancy = AnswerRelevancy(llm=llm)
+        context_precision = ContextPrecision(llm=llm)
 
         # Prepare data for Ragas
         # Ragas expects: question, answer, contexts, ground_truth
@@ -277,7 +302,6 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
         dataset = Dataset.from_dict(data)
 
         # Run Ragas evaluation
-        # Note: This requires OPENAI_API_KEY to be set
         ragas_result = evaluate(
             dataset,
             metrics=[faithfulness, answer_relevancy, context_precision],
