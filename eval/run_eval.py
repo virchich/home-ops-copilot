@@ -36,11 +36,13 @@ class EvalResult:
     has_risk_level: bool
     risk_level_valid: bool
     # Custom metrics (Home Ops specific)
-    has_citations: bool                      # Are sources cited?
-    high_risk_recommends_pro: bool | None    # Does HIGH risk mention professional? (None if not HIGH)
-    answer_length: int                       # Character count
-    answer_concise: bool                     # Under 2000 chars?
-    mentions_safety_for_dangerous: bool | None  # For electrical/gas, mentions safety? (None if not applicable)
+    has_citations: bool  # Are sources cited?
+    high_risk_recommends_pro: bool | None  # Does HIGH risk mention professional? (None if not HIGH)
+    answer_length: int  # Character count
+    answer_concise: bool  # Under 2000 chars?
+    mentions_safety_for_dangerous: (
+        bool | None
+    )  # For electrical/gas, mentions safety? (None if not applicable)
     # Ragas metrics (when ground truth available)
     faithfulness: float | None = None
     answer_relevancy: float | None = None
@@ -141,17 +143,13 @@ def run_single_question(q: dict) -> EvalResult:
         # Compute custom metrics
         has_citations = len(result.citations) > 0
 
-        # HIGH risk should recommend professional
-        if risk == "HIGH":
-            high_risk_recommends_pro = check_recommends_professional(answer)
-        else:
-            high_risk_recommends_pro = None  # Not applicable
+        # HIGH risk should recommend professional (None if not HIGH risk)
+        high_risk_recommends_pro = check_recommends_professional(answer) if risk == "HIGH" else None
 
-        # Dangerous categories should mention safety
-        if is_dangerous_category(category):
-            mentions_safety_for_dangerous = check_mentions_safety(answer)
-        else:
-            mentions_safety_for_dangerous = None  # Not applicable
+        # Dangerous categories should mention safety (None if not dangerous)
+        mentions_safety_for_dangerous = (
+            check_mentions_safety(answer) if is_dangerous_category(category) else None
+        )
 
         answer_length = len(answer)
         answer_concise = answer_length < 2000  # Reasonable limit for concise answers
@@ -212,22 +210,37 @@ def compute_format_metrics(results: list[EvalResult]) -> dict:
         "successful_calls": len(successful),
         "error_rate": (total - len(successful)) / total if total > 0 else 0,
         # Basic format checks
-        "has_answer_rate": sum(1 for r in successful if r.has_answer) / len(successful) if successful else 0,
-        "has_risk_level_rate": sum(1 for r in successful if r.has_risk_level) / len(successful) if successful else 0,
-        "risk_level_valid_rate": sum(1 for r in successful if r.risk_level_valid) / len(successful) if successful else 0,
+        "has_answer_rate": sum(1 for r in successful if r.has_answer) / len(successful)
+        if successful
+        else 0,
+        "has_risk_level_rate": sum(1 for r in successful if r.has_risk_level) / len(successful)
+        if successful
+        else 0,
+        "risk_level_valid_rate": sum(1 for r in successful if r.risk_level_valid) / len(successful)
+        if successful
+        else 0,
         # Custom metrics
-        "has_citations_rate": sum(1 for r in successful if r.has_citations) / len(successful) if successful else 0,
-        "answer_concise_rate": sum(1 for r in successful if r.answer_concise) / len(successful) if successful else 0,
-        "avg_answer_length": sum(r.answer_length for r in successful) / len(successful) if successful else 0,
+        "has_citations_rate": sum(1 for r in successful if r.has_citations) / len(successful)
+        if successful
+        else 0,
+        "answer_concise_rate": sum(1 for r in successful if r.answer_concise) / len(successful)
+        if successful
+        else 0,
+        "avg_answer_length": sum(r.answer_length for r in successful) / len(successful)
+        if successful
+        else 0,
         # Conditional metrics (only for applicable questions)
         "high_risk_recommends_pro_rate": (
             sum(1 for r in high_risk_results if r.high_risk_recommends_pro) / len(high_risk_results)
-            if high_risk_results else None
+            if high_risk_results
+            else None
         ),
         "high_risk_count": len(high_risk_results),
         "dangerous_mentions_safety_rate": (
-            sum(1 for r in dangerous_results if r.mentions_safety_for_dangerous) / len(dangerous_results)
-            if dangerous_results else None
+            sum(1 for r in dangerous_results if r.mentions_safety_for_dangerous)
+            / len(dangerous_results)
+            if dangerous_results
+            else None
         ),
         "dangerous_category_count": len(dangerous_results),
     }
@@ -255,7 +268,9 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
         data = {
             "question": [r.question for r in with_ground_truth],
             "answer": [r.answer for r in with_ground_truth],
-            "contexts": [r.contexts if r.contexts else ["No context available."] for r in with_ground_truth],
+            "contexts": [
+                r.contexts if r.contexts else ["No context available."] for r in with_ground_truth
+            ],
             "ground_truth": [r.ground_truth for r in with_ground_truth],
         }
 
@@ -268,10 +283,11 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
             metrics=[faithfulness, answer_relevancy, context_precision],
         )
 
+        # ragas returns EvaluationResult which has dict-like access but poor type hints
         return {
-            "faithfulness": float(ragas_result["faithfulness"]),
-            "answer_relevancy": float(ragas_result["answer_relevancy"]),
-            "context_precision": float(ragas_result["context_precision"]),
+            "faithfulness": float(ragas_result["faithfulness"]),  # type: ignore[arg-type,index]
+            "answer_relevancy": float(ragas_result["answer_relevancy"]),  # type: ignore[arg-type,index]
+            "context_precision": float(ragas_result["context_precision"]),  # type: ignore[arg-type,index]
             "questions_with_ground_truth": len(with_ground_truth),
         }
     except ImportError as e:
@@ -350,15 +366,19 @@ def print_summary(format_metrics: dict, ragas_metrics: dict | None) -> None:
     print(f"  Avg answer length:    {format_metrics['avg_answer_length']:.0f} chars")
 
     # Conditional metrics
-    if format_metrics['high_risk_count'] > 0:
-        rate = format_metrics['high_risk_recommends_pro_rate']
-        print(f"  HIGH risk → pro rate: {rate:.1%} ({format_metrics['high_risk_count']} HIGH risk answers)")
+    if format_metrics["high_risk_count"] > 0:
+        rate = format_metrics["high_risk_recommends_pro_rate"]
+        print(
+            f"  HIGH risk → pro rate: {rate:.1%} ({format_metrics['high_risk_count']} HIGH risk answers)"
+        )
     else:
         print("  HIGH risk → pro rate: N/A (no HIGH risk answers)")
 
-    if format_metrics['dangerous_category_count'] > 0:
-        rate = format_metrics['dangerous_mentions_safety_rate']
-        print(f"  Safety mention rate:  {rate:.1%} ({format_metrics['dangerous_category_count']} dangerous category Qs)")
+    if format_metrics["dangerous_category_count"] > 0:
+        rate = format_metrics["dangerous_mentions_safety_rate"]
+        print(
+            f"  Safety mention rate:  {rate:.1%} ({format_metrics['dangerous_category_count']} dangerous category Qs)"
+        )
     else:
         print("  Safety mention rate:  N/A (no dangerous category questions)")
 
@@ -367,7 +387,9 @@ def print_summary(format_metrics: dict, ragas_metrics: dict | None) -> None:
         print(f"  Faithfulness:         {ragas_metrics['faithfulness']:.3f}")
         print(f"  Answer Relevancy:     {ragas_metrics['answer_relevancy']:.3f}")
         print(f"  Context Precision:    {ragas_metrics['context_precision']:.3f}")
-        print(f"  (Based on {ragas_metrics['questions_with_ground_truth']} questions with ground truth)")
+        print(
+            f"  (Based on {ragas_metrics['questions_with_ground_truth']} questions with ground truth)"
+        )
     else:
         print("\nRagas Metrics: Not available (no ground truth in golden set)")
 
