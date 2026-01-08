@@ -16,3 +16,6 @@ wheels/
 .idea/
 .vscode/
 *.swp
+
+# Eval reports (generated artifacts)
+eval/reports/
