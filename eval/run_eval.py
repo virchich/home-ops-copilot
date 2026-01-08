@@ -248,14 +248,31 @@ def compute_format_metrics(results: list[EvalResult]) -> dict:
 
 def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
     """
-    Compute Ragas metrics if ground truth is available.
+    Compute Ragas metrics if ground truth and contexts are available.
 
-    Returns None if no ground truth available.
+    Returns None if:
+    - No ground truth available
+    - No contexts available (Week 1 - no retrieval yet)
+
+    Ragas metrics require retrieved contexts to be meaningful:
+    - Faithfulness: Is answer grounded in context?
+    - Context Precision: Are retrieved docs relevant?
+    These don't make sense without actual retrieval.
     """
     # Filter to results with ground truth
     with_ground_truth = [r for r in results if r.ground_truth and not r.error]
 
     if not with_ground_truth:
+        return None
+
+    # Check if we have actual contexts (not empty)
+    # Ragas metrics require retrieved contexts to be meaningful
+    has_contexts = any(r.contexts for r in with_ground_truth)
+    if not has_contexts:
+        print(
+            "Note: Skipping Ragas metrics - no retrieved contexts available. "
+            "Ragas will be enabled in Week 3+ when retrieval is implemented."
+        )
         return None
 
     try:
@@ -289,9 +306,7 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
         data = {
             "question": [r.question for r in with_ground_truth],
             "answer": [r.answer for r in with_ground_truth],
-            "contexts": [
-                r.contexts if r.contexts else ["No context available."] for r in with_ground_truth
-            ],
+            "contexts": [r.contexts for r in with_ground_truth],
             "ground_truth": [r.ground_truth for r in with_ground_truth],
         }
 
@@ -303,11 +318,20 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
             metrics=[faithfulness, answer_relevancy, context_precision],
         )
 
-        # ragas returns EvaluationResult which has dict-like access but poor type hints
+        # ragas returns EvaluationResult - extract scores
+        # Modern ragas may return lists (per-sample) or aggregated floats
+        def extract_score(result: object, key: str) -> float:
+            """Extract score from ragas result, handling both list and scalar formats."""
+            value = result[key]  # type: ignore[index]
+            if isinstance(value, list):
+                # Per-sample scores - compute mean
+                return sum(value) / len(value) if value else 0.0
+            return float(value)
+
         return {
-            "faithfulness": float(ragas_result["faithfulness"]),  # type: ignore[arg-type,index]
-            "answer_relevancy": float(ragas_result["answer_relevancy"]),  # type: ignore[arg-type,index]
-            "context_precision": float(ragas_result["context_precision"]),  # type: ignore[arg-type,index]
+            "faithfulness": extract_score(ragas_result, "faithfulness"),
+            "answer_relevancy": extract_score(ragas_result, "answer_relevancy"),
+            "context_precision": extract_score(ragas_result, "context_precision"),
             "questions_with_ground_truth": len(with_ground_truth),
         }
     except ImportError as e:
