@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"  # Cost-effective default for eval
+    openai_model: str = "gpt-5.2"  # GPT-5.2 base model
 
     # App settings
     app_name: str = "Home Ops Copilot"
