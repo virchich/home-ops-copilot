@@ -4,9 +4,9 @@
 
 ## Current Status
 
-**Phase**: Not Started
-**Last Updated**: 2025-01-07
-**Current Focus**: Week 1 - Setup + eval-first baseline
+**Phase**: Week 1 Complete
+**Last Updated**: 2026-01-08
+**Current Focus**: Ready for Week 2 - Ingestion pipeline
 
 ---
 
@@ -17,9 +17,13 @@
 - [x] Create repo + venv (uv) + pre-commit
 - [x] FastAPI "hello world" endpoint (`/health`)
 - [x] Create golden set: 50 real questions (furnace, HRV, filters, windows condensation, etc.)
-- [ ] Write a minimal eval runner that calls your API and saves outputs
+- [x] Write a minimal eval runner that calls your API and saves outputs
+- [x] Add `/ask` endpoint with structured LLM responses (instructor + Pydantic)
+- [x] Add config module (pydantic-settings)
+- [x] Add Makefile for project orchestration
+- [x] Add unit tests (71 tests covering config, API, eval helpers)
 
-**Deliverable**: `/eval` produces a baseline report from a stubbed system.
+**Deliverable**: `make eval` produces a baseline report with format metrics. ✅
 
 ---
 
@@ -160,11 +164,11 @@
 
 These are the first things to tackle in Week 1:
 
-1. [ ] FastAPI skeleton + `/ask` endpoint stub
-2. [ ] Ingest: load a single PDF manual → chunk → index → query
-3. [ ] Return citations in the response (even if ugly at first)
-4. [ ] Build `golden_questions.jsonl` (50 Qs) + `run_ragas.py` placeholder
-5. [ ] Add Langfuse trace wrapper around `/ask` endpoint
+1. [x] FastAPI skeleton + `/ask` endpoint stub
+2. [ ] Ingest: load a single PDF manual → chunk → index → query *(Week 2)*
+3. [ ] Return citations in the response (even if ugly at first) *(Week 3)*
+4. [x] Build `golden_questions.jsonl` (50 Qs) + `run_eval.py`
+5. [ ] Add Langfuse trace wrapper around `/ask` endpoint *(Week 8)*
 
 ---
 
@@ -175,6 +179,19 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-01-08** - Week 1 Complete
+- Created eval runner (`eval/run_eval.py`) with format checks and Ragas metrics
+- Added `/ask` endpoint with structured LLM responses using **instructor** library
+- Added config module (`app/core/config.py`) with pydantic-settings
+- Created query module (`app/rag/query.py`) with OpenAI integration
+- Added 5 questions with ground truth to golden set for future Ragas evaluation
+- Created Makefile with commands: install, check, test, eval, eval-quick, run, clean, clean-reports
+- Added dev dependencies: ruff, mypy, pytest
+- Added 71 unit tests for stable components (config, API, eval helpers, format metrics)
+- Fixed GPT-5.2 compatibility (max_completion_tokens instead of max_tokens)
+- Fixed Ragas deprecated imports and API changes
+- Eval runner skips Ragas metrics when no contexts (Week 1 behavior - no retrieval yet)
 
 **2025-01-07** - Project initialized
 - Created TODO.md and CLAUDE.md
@@ -196,6 +213,10 @@ These are the first things to tackle in Week 1:
 | 2025-01-07 | Use LangGraph for workflows | Explicit control flow over pure agents |
 | 2025-01-07 | Local-first persistence | Don't over-engineer; can add cloud later if needed |
 | 2025-01-07 | Use uv as package manager | Fast, modern, handles venv + deps in one tool |
+| 2026-01-08 | Use instructor for LLM outputs | Pydantic-validated structured outputs, cleaner than manual parsing |
+| 2026-01-08 | GPT-5.2 as default model | Access to latest capabilities |
+| 2026-01-08 | Makefile for orchestration | Simple, universal, no extra dependencies |
+| 2026-01-08 | Custom eval metrics first | Rule-based checks (pro recommendations, safety mentions) work without retrieval |
 
 ---
 
