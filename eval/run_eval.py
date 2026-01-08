@@ -454,15 +454,23 @@ def main() -> int:
 
     # Run evaluation
     results: list[EvalResult] = []
+    truncate_len = 150  # Length for truncating question/answer preview
     for i, q in enumerate(questions, 1):
-        print(f"  [{i}/{len(questions)}] {q['category']}: {q['question'][:50]}...")
+        question_preview = q["question"][:truncate_len]
+        if len(q["question"]) > truncate_len:
+            question_preview += "..."
+        print(f"  [{i}/{len(questions)}] {q['category']}: {question_preview}")
+
         result = run_single_question(q)
         results.append(result)
 
         if result.error:
             print(f"    ERROR: {result.error}")
         else:
-            print(f"    Risk: {result.risk_level}, Answer length: {len(result.answer)}")
+            answer_preview = result.answer[:truncate_len].replace("\n", " ")
+            if len(result.answer) > truncate_len:
+                answer_preview += "..."
+            print(f"    Risk: {result.risk_level} | {answer_preview}")
 
     # Compute metrics
     format_metrics = compute_format_metrics(results)
