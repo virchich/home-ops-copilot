@@ -1,0 +1,50 @@
+{"id": 1, "category": "hvac", "question": "What furnace filter size do I need, and what MERV rating is appropriate for my system without restricting airflow too much?", "ground_truth": "Check the existing filter or furnace manual for exact size (common sizes: 16x25x1, 20x25x1, 20x20x1). MERV 8-11 is recommended for most residential systems - balances filtration and airflow. Higher MERV (13+) can restrict airflow and strain the blower unless your system is designed for it.", "ground_truth_source": "general_knowledge", "confidence": "high"}
+{"id": 2, "category": "hvac", "question": "How often should I replace my furnace filter in winter vs summer, based on how dusty the house is and having pets?", "ground_truth": "With pets or dusty conditions: every 1-2 months in winter (heavy use), every 2-3 months in summer. Without pets in clean home: every 2-3 months in winter, every 3 months in summer. Check monthly and replace when visibly dirty.", "ground_truth_source": "general_knowledge", "confidence": "high"}
+{"id": 3, "category": "hvac", "question": "My windows fog up and sometimes form water at -20C outside. What indoor humidity should I target and why?", "ground_truth": "At -20C outside, target 25-30% indoor humidity to prevent condensation. Condensation forms when warm moist air hits cold window surface. Lower humidity in extreme cold, higher (35-40%) in milder weather. Double-pane windows handle higher humidity than single-pane.", "ground_truth_source": "general_knowledge", "confidence": "high"}
+{"id": 4, "category": "hvac", "question": "If I have an HRV, what settings should I use in winter to reduce window condensation without over-drying the house?"}
+{"id": 5, "category": "hvac", "question": "How do I tell if my thermostat is configured correctly for a 2-stage furnace, and what symptoms show it's wrong?"}
+{"id": 6, "category": "hvac", "question": "The furnace turns on/off frequently (short cycling). What are the most likely causes and what should I check first?", "ground_truth": "Most likely causes: dirty filter (check first - most common), thermostat issues (location near heat source, bad batteries), oversized furnace, blocked vents, flame sensor dirty. Check filter first, then thermostat placement. If continues, call HVAC tech.", "ground_truth_source": "general_knowledge", "confidence": "medium"}
+{"id": 7, "category": "hvac", "question": "One room is always colder than the rest. What are the top HVAC / airflow causes and the safest checks I can do?"}
+{"id": 8, "category": "hvac", "question": "The furnace is making a new rattling or whistling sound. What could it be and when should I stop and call a pro?", "ground_truth": "Rattling: loose panel, debris in ducts, blower issue. Whistling: filter too restrictive, duct leak, return air blocked. Safe checks: tighten panels, check filter, ensure vents open. STOP and call pro if: smell gas, hear grinding/screeching, see sparks, furnace won't stay on.", "ground_truth_source": "general_knowledge", "confidence": "medium"}
+{"id": 9, "category": "hvac", "question": "There's a burning smell when heat first turns on. What's normal vs concerning?"}
+{"id": 10, "category": "hvac", "question": "What's a safe temperature range to keep the house at in winter to protect pipes and still be comfortable?"}
+{"id": 11, "category": "hvac", "question": "How do I know if my humidifier is actually running, and what maintenance does it need (pad, cleaning)?"}
+{"id": 12, "category": "hvac", "question": "What are signs my HRV needs cleaning or service, and what parts are typically cleaned/replaced?"}
+{"id": 13, "category": "plumbing", "question": "How do I winterize outdoor taps properly, and what are the common mistakes that cause freezing?"}
+{"id": 14, "category": "plumbing", "question": "I closed the basement shutoff for outdoor water but one exterior tap still runs. What might explain that?"}
+{"id": 15, "category": "plumbing", "question": "What's the correct way to use and maintain a water softener (how much salt, how often, signs it's not working)?"}
+{"id": 16, "category": "plumbing", "question": "My water tastes \"off\" after moving in. What are likely causes and what should I test first?"}
+{"id": 17, "category": "plumbing", "question": "Should I flush my hot water tank? How often, and what's the safe process vs when to call a plumber?"}
+{"id": 18, "category": "plumbing", "question": "I hear water running sometimes when nothing is on. How do I narrow down if it's a toilet leak, humidifier, or something else?"}
+{"id": 19, "category": "plumbing", "question": "The dishwasher racks are rusting. Is it worth replacing racks vs buying a new dishwasher?"}
+{"id": 20, "category": "plumbing", "question": "My dishwasher smells bad. What are the likely causes and the cleaning steps that actually work?"}
+{"id": 21, "category": "plumbing", "question": "The basement drain/backwater valve exists - what is it, how often should it be inspected, and what can go wrong?"}
+{"id": 22, "category": "plumbing", "question": "If my sump pump exists, how do I test it safely and how often?"}
+{"id": 23, "category": "electrical", "question": "A breaker keeps tripping. What are safe checks I can do, and when should I immediately call an electrician?"}
+{"id": 24, "category": "electrical", "question": "An outlet stopped working in one room. Could it be a GFCI upstream, and how do I check safely?"}
+{"id": 25, "category": "electrical", "question": "Where should smoke detectors and CO detectors be placed in a multi-level home, and how often should I test/replace them?"}
+{"id": 26, "category": "electrical", "question": "My CO detector went off briefly and then stopped. What should I do immediately?"}
+{"id": 27, "category": "electrical", "question": "Is it safe for me to replace a thermostat myself, and what wiring mistakes are common?"}
+{"id": 28, "category": "electrical", "question": "A light switch feels warm. Is that normal?"}
+{"id": 29, "category": "electrical", "question": "What are the signs of aluminum wiring or electrical issues I should be aware of in a home?"}
+{"id": 30, "category": "building_envelope", "question": "How do I check for drafts around windows/doors without special tools?"}
+{"id": 31, "category": "building_envelope", "question": "What are the best low-skill ways to reduce heat loss in winter (priority order)?"}
+{"id": 32, "category": "building_envelope", "question": "My attic hatch looks \"sealed\" / builder-only. Why is it designed that way and should I open it?"}
+{"id": 33, "category": "building_envelope", "question": "I see ice buildup near the roof edge (ice dam). Why does it happen and what can I do safely?"}
+{"id": 34, "category": "building_envelope", "question": "How can I tell if my windows are double-pane vs triple-pane, and what does that imply for condensation?"}
+{"id": 35, "category": "building_envelope", "question": "If I replace windows, what should I prioritize (U-factor, triple pane, low-e, gas fill), and what's realistic ROI?"}
+{"id": 36, "category": "appliances", "question": "How often should I clean the dryer vent, and what are warning signs it's clogged?"}
+{"id": 37, "category": "appliances", "question": "My fridge is loud or seems to run constantly. What are likely causes (coils, seals, temperature settings)?"}
+{"id": 38, "category": "appliances", "question": "The washer smells musty. What cleaning cycle/steps actually work and how do I prevent it?"}
+{"id": 39, "category": "appliances", "question": "How do I know if a bathroom fan is properly vented outside vs into the attic?"}
+{"id": 40, "category": "smart_home", "question": "What's the simplest reliable HomeKit setup for thermostat + sensors + plugs that won't randomly disconnect?"}
+{"id": 41, "category": "smart_home", "question": "Where should I place Wi-Fi access points/mesh nodes in a 3-floor home for stable coverage?"}
+{"id": 42, "category": "smart_home", "question": "How do I reduce smart-home \"vendor lock-in\" while keeping things simple?"}
+{"id": 43, "category": "smart_home", "question": "I'm paying ISP fees for extenders - what should I buy instead and how do I evaluate compatibility?"}
+{"id": 44, "category": "seasonal", "question": "Create a Winter maintenance checklist for my house (HVAC, humidity, safety, exterior)."}
+{"id": 45, "category": "seasonal", "question": "Create a Spring maintenance checklist (gutters, exterior inspection, sump pump, HVAC)."}
+{"id": 46, "category": "seasonal", "question": "What home maintenance tasks should be monthly vs quarterly vs yearly? Give me a schedule."}
+{"id": 47, "category": "seasonal", "question": "What should I check immediately after moving into a house to avoid expensive surprises in the first year?"}
+{"id": 48, "category": "tools_diy", "question": "What's the difference between a drill and an impact driver, and when should I use each?"}
+{"id": 49, "category": "tools_diy", "question": "How do I choose the right drywall anchors for a shelf, and how do I estimate if it will hold safely?"}
+{"id": 50, "category": "tools_diy", "question": "I'm not handy - what are the most common DIY mistakes homeowners make, and how do I avoid them?"}
