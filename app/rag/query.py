@@ -135,7 +135,7 @@ def query(question: str) -> QueryResponse:
         ],
         response_model=LLMResponse,  # This is the magic - instructor enforces this
         temperature=0.3,
-        max_tokens=1000,
+        max_completion_tokens=1000,  # GPT-5.x uses max_completion_tokens instead of max_tokens
     )
 
     # Week 1: No citations since no retrieval
