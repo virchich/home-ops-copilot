@@ -1,4 +1,4 @@
-.PHONY: install check test eval run clean help
+.PHONY: install check test eval eval-quick run clean clean-reports help
 
 # Default target
 help:
@@ -10,6 +10,7 @@ help:
 	@echo "  make eval-quick - Run evaluation on 5 questions (quick test)"
 	@echo "  make run      - Start FastAPI development server"
 	@echo "  make clean    - Remove cache files and build artifacts"
+	@echo "  make clean-reports - Remove eval report files"
 
 # Install dependencies
 install:
@@ -44,3 +45,8 @@ clean:
 	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+# Clean up eval reports
+clean-reports:
+	rm -f eval/reports/*.json
+	@echo "Eval reports cleared"
