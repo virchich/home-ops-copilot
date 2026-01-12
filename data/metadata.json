@@ -1,0 +1,74 @@
+{
+  "documents": [
+    {
+      "file_name": "Furnace-OM9GFRC-02.pdf",
+      "device_type": "furnace",
+      "device_name": "OM9GFRC",
+      "manufacturer": "Carrier",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": ["hvac", "heating", "gas"],
+      "description": "Gas furnace installation and operation manual"
+    },
+    {
+      "file_name": "ST_Premium_QSG_Digital_CAN_EN_20220404.pdf",
+      "device_type": "thermostat",
+      "device_name": "Premium",
+      "manufacturer": "Ecobee",
+      "doc_type": "manual",
+      "location": "main_floor",
+      "tags": ["hvac", "smart_home", "climate_control"],
+      "description": "Ecobee Premium smart thermostat quick start guide"
+    },
+    {
+      "file_name": "eaton-energy-meter-emc3p-p2p1-manual-mn325020en-us.pdf",
+      "device_type": "energy_meter",
+      "device_name": "EMC3P-P2P1",
+      "manufacturer": "Eaton",
+      "doc_type": "manual",
+      "location": "outside",
+      "tags": ["electrical", "monitoring", "power"],
+      "description": "Three-phase energy meter installation and operation manual"
+    },
+    {
+      "file_name": "40106-fleck-5600-manual.pdf",
+      "device_type": "water_softener",
+      "device_name": "5600",
+      "manufacturer": "Fleck",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": ["water", "plumbing", "filtration"],
+      "description": "Water softener control valve manual"
+    },
+    {
+      "file_name": "GI-IM017En-Res-Elect.pdf",
+      "device_type": "water_heater",
+      "device_name": "UG50",
+      "manufacturer": "Giant",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": ["water", "plumbing", "electrical", "heating"],
+      "description": "Electric residential water heater manual"
+    },
+    {
+      "file_name": "GeneralAire-570-Installation-and-Owners-Manual.pdf",
+      "device_type": "humidifier",
+      "device_name": "570",
+      "manufacturer": "GeneralAire",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": ["hvac", "humidity", "air_quality"],
+      "description": "Bypass humidifier installation and owner's manual"
+    },
+    {
+      "file_name": "69-RNC5-HEX-Owners-11-18-16.pdf",
+      "device_type": "hrv",
+      "device_name": "RNC5-HEX",
+      "manufacturer": "Lifebreath",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": ["hvac", "ventilation", "air_quality"],
+      "description": "Heat Recovery Ventilator owner's manual"
+    }
+  ]
+}

@@ -2,11 +2,13 @@
 
 > **Purpose**: Track progress and notes for the Home Ops Copilot project. This file serves as the single source of truth for any LLM agent working on this project.
 
+> **Learning Mode**: The maintainer is learning RAG systems through this project. LLM sessions should be **descriptive and elaborative** - explain concepts in detail, walk through code step-by-step, and use diagrams/tables where helpful. Prioritize teaching over speed.
+
 ## Current Status
 
-**Phase**: Week 1 Complete
-**Last Updated**: 2026-01-08
-**Current Focus**: Ready for Week 2 - Ingestion pipeline
+**Phase**: Week 2 Complete
+**Last Updated**: 2026-01-12
+**Current Focus**: Ready for Week 3 - RAG query with citations
 
 ---
 
@@ -31,12 +33,12 @@
 
 **Goal**: Build the document ingestion pipeline.
 
-- [ ] Collect 20–50 docs into `data/raw_docs/`
-- [ ] Create metadata schema (device, model, room, purchase date, tags, doc_type)
-- [ ] Implement extract→chunk→persist pipeline
-- [ ] Persist index locally (don't over-engineer: local first)
+- [x] Collect 20–50 docs into `data/raw_docs/`
+- [x] Create metadata schema (device, model, room, purchase date, tags, doc_type)
+- [x] Implement extract→chunk→persist pipeline
+- [x] Persist index locally (don't over-engineer: local first)
 
-**Deliverable**: `python -m app.rag.ingest` builds an index from your folder.
+**Deliverable**: `make ingest-rebuild` builds an index from your folder. ✅
 
 ---
 
@@ -165,7 +167,7 @@
 These are the first things to tackle in Week 1:
 
 1. [x] FastAPI skeleton + `/ask` endpoint stub
-2. [ ] Ingest: load a single PDF manual → chunk → index → query *(Week 2)*
+2. [x] Ingest: load a single PDF manual → chunk → index → query *(Week 2)*
 3. [ ] Return citations in the response (even if ugly at first) *(Week 3)*
 4. [x] Build `golden_questions.jsonl` (50 Qs) + `run_eval.py`
 5. [ ] Add Langfuse trace wrapper around `/ask` endpoint *(Week 8)*
@@ -179,6 +181,18 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-01-12** - Week 2 Complete
+- Added 7 PDF manuals to `data/raw_docs/` (furnace, thermostat, HRV, water heater, water softener, humidifier, energy meter)
+- Created Pydantic metadata schema (`app/rag/schema.py`) with device type, location, tags, etc.
+- Created `data/metadata.json` with metadata for all 7 documents
+- Built ingestion pipeline (`app/rag/ingest.py`) with extract→chunk→persist flow
+- Used LlamaIndex with OpenAI `text-embedding-3-small` for embeddings
+- Added `pdfplumber` fallback for PDFs that fail with `pypdf` (font encoding issues)
+- Created `scripts/check_docs.py` to validate PDFs have metadata entries
+- Added Makefile commands: `ingest`, `ingest-rebuild`, `check-docs`
+- Pipeline creates 250 chunks from 7 documents (~317K characters)
+- Embedding cost: < $0.01
 
 **2026-01-08** - Week 1 Complete
 - Created eval runner (`eval/run_eval.py`) with format checks and Ragas metrics
@@ -217,6 +231,9 @@ These are the first things to tackle in Week 1:
 | 2026-01-08 | GPT-5.2 as default model | Access to latest capabilities |
 | 2026-01-08 | Makefile for orchestration | Simple, universal, no extra dependencies |
 | 2026-01-08 | Custom eval metrics first | Rule-based checks (pro recommendations, safety mentions) work without retrieval |
+| 2026-01-12 | pypdf + pdfplumber fallback | pypdf is faster but fails on some fonts; pdfplumber handles edge cases |
+| 2026-01-12 | Local file-based vector index | Simple persistence, no database setup needed; can migrate to Postgres/MongoDB later |
+| 2026-01-12 | 512 token chunks with 50 overlap | Good balance of precision and context; sentence-aware splitting |
 
 ---
 
