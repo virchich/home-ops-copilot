@@ -75,6 +75,12 @@ class RAGSettings(BaseModel):
         ge=1,
         le=20,
     )
+    min_relevance_score: float = Field(
+        default=0.3,
+        description="Minimum similarity score to consider a chunk relevant (0-1)",
+        ge=0.0,
+        le=1.0,
+    )
 
     # Embedding
     embedding_model: str = Field(
