@@ -15,6 +15,7 @@ from openai import OpenAI
 
 from app.core.config import settings
 from app.rag.models import Citation, LLMResponse, QueryResponse, RiskLevel
+from app.rag.retriever import format_contexts_for_llm, retrieve
 
 
 # =============================================================================
@@ -45,6 +46,8 @@ def get_llm_client() -> instructor.Instructor:
 
 SYSTEM_PROMPT = """You are a home maintenance assistant. Answer questions about home maintenance, troubleshooting, and repairs.
 
+You have access to a knowledge base of manuals, guides, and documentation about the user's home systems. When answering questions, you will receive relevant excerpts from these documents.
+
 IMPORTANT RULES:
 1. Assess risk level for every question:
    - LOW: Safe for any homeowner to do themselves
@@ -55,9 +58,11 @@ IMPORTANT RULES:
 
 3. Be concise and actionable - homeowners want clear steps, not essays
 
-4. If you don't have enough information to answer safely, say so - never guess on safety-critical topics
+4. ALWAYS cite your sources using the [Source N] format that matches the context provided. Include citations inline where relevant.
 
-5. For now, you don't have access to specific documents about the user's home. When the RAG system is connected, you will receive relevant document excerpts to cite.
+5. If the provided context does not contain enough information to answer the question reliably, say "I don't have enough information in my knowledge base to answer this question reliably." Do NOT make up information or cite sources that weren't provided.
+
+6. Only cite information that actually appears in the provided context. Never hallucinate citations.
 """
 
 
@@ -71,8 +76,8 @@ def query(question: str) -> QueryResponse:
     Query the system with a question and get a structured response.
 
     This is the main entry point for the RAG pipeline. It:
-    1. Retrieves relevant documents (TODO: Phase 2)
-    2. Calls the LLM with context
+    1. Retrieves relevant documents from the vector index
+    2. Calls the LLM with retrieved context
     3. Returns a structured response with citations
 
     Args:
@@ -84,10 +89,18 @@ def query(question: str) -> QueryResponse:
     # Get cached LLM client
     client = get_llm_client()
 
-    # TODO: Phase 2 - Add retrieval step here
-    # retrieved_nodes = retrieve(question)
-    # context = format_contexts_for_llm(retrieved_nodes)
-    contexts: list[str] = []
+    # Retrieve relevant chunks from the knowledge base
+    retrieved_nodes = retrieve(question)
+    context = format_contexts_for_llm(retrieved_nodes)
+    contexts = [node.node.text for node in retrieved_nodes]
+
+    # Build user message with retrieved context
+    user_message = f"""Context from your knowledge base:
+{context}
+
+Question: {question}
+
+Answer based on the context above. Cite sources using [Source N] format."""
 
     # Call LLM with structured output
     # instructor automatically:
@@ -99,15 +112,14 @@ def query(question: str) -> QueryResponse:
         model=settings.llm.model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": question},
+            {"role": "user", "content": user_message},
         ],
         response_model=LLMResponse,
         temperature=settings.llm.temperature,
         max_completion_tokens=settings.llm.max_completion_tokens,
     )
 
-    # TODO: Phase 2 - Extract citations from retrieved docs
-    # For now, LLM returns empty citations since no context provided
+    # Extract citations from LLM response
     citations: list[Citation] = llm_response.citations
 
     return QueryResponse(
