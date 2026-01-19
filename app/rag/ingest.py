@@ -33,17 +33,10 @@ from app.core.config import settings
 from app.rag.schema import DocumentMetadata, MetadataFile
 
 # =============================================================================
-# CONFIGURATION
+# CONFIGURATION (from centralized settings)
 # =============================================================================
-
-# Paths
-RAW_DOCS_DIR = Path("data/raw_docs")
-METADATA_FILE = Path("data/metadata.json")
-INDEX_DIR = Path("data/indexes")
-
-# Chunking settings
-CHUNK_SIZE = 512  # tokens per chunk (sweet spot for most use cases)
-CHUNK_OVERLAP = 50  # tokens of overlap between chunks (preserves context)
+# All config values are now in app/core/config.py
+# Override via environment variables: RAG__CHUNK_SIZE=256, PATHS__INDEX_DIR=./custom
 
 # Set up logging so we can see what's happening
 logging.basicConfig(level=logging.INFO)
@@ -65,16 +58,16 @@ def load_metadata() -> dict[str, DocumentMetadata]:
         Dictionary mapping file_name -> DocumentMetadata
         This makes it easy to look up metadata when loading each PDF.
     """
-    logger.info(f"Loading metadata from {METADATA_FILE}")
+    logger.info(f"Loading metadata from {settings.paths.metadata_file}")
 
-    if not METADATA_FILE.exists():
+    if not settings.paths.metadata_file.exists():
         raise FileNotFoundError(
-            f"Metadata file not found: {METADATA_FILE}\n"
+            f"Metadata file not found: {settings.paths.metadata_file}\n"
             "Create data/metadata.json with your document metadata."
         )
 
     # Load and validate with Pydantic
-    with open(METADATA_FILE) as f:
+    with open(settings.paths.metadata_file) as f:
         data = json.load(f)
 
     metadata_file = MetadataFile(**data)  # Pydantic validates the structure
@@ -108,16 +101,16 @@ def load_documents(metadata_dict: dict[str, DocumentMetadata]) -> list[Document]
     Returns:
         List of LlamaIndex Document objects
     """
-    logger.info(f"Loading documents from {RAW_DOCS_DIR}")
+    logger.info(f"Loading documents from {settings.paths.raw_docs_dir}")
 
-    if not RAW_DOCS_DIR.exists():
-        raise FileNotFoundError(f"Raw docs directory not found: {RAW_DOCS_DIR}")
+    if not settings.paths.raw_docs_dir.exists():
+        raise FileNotFoundError(f"Raw docs directory not found: {settings.paths.raw_docs_dir}")
 
     documents = []
-    pdf_files = list(RAW_DOCS_DIR.glob("*.pdf"))
+    pdf_files = list(settings.paths.raw_docs_dir.glob("*.pdf"))
 
     if not pdf_files:
-        raise ValueError(f"No PDF files found in {RAW_DOCS_DIR}")
+        raise ValueError(f"No PDF files found in {settings.paths.raw_docs_dir}")
 
     logger.info(f"Found {len(pdf_files)} PDF files")
 
@@ -251,7 +244,7 @@ def build_index(documents: list[Document]) -> VectorStoreIndex:
     # Configure the embedding model
     # This is what converts text -> vectors
     embed_model = OpenAIEmbedding(
-        model="text-embedding-3-small",  # Good balance of quality and cost
+        model=settings.rag.embedding_model,
         api_key=settings.openai_api_key,
     )
 
@@ -259,8 +252,8 @@ def build_index(documents: list[Document]) -> VectorStoreIndex:
     # SentenceSplitter tries to split at sentence boundaries
     # This keeps chunks more coherent than splitting mid-sentence
     node_parser = SentenceSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
+        chunk_size=settings.rag.chunk_size,
+        chunk_overlap=settings.rag.chunk_overlap,
     )
 
     # Set global settings for LlamaIndex
@@ -274,7 +267,10 @@ def build_index(documents: list[Document]) -> VectorStoreIndex:
     # 2. Calls OpenAI API to get embeddings for each chunk
     # 3. Stores everything in an in-memory vector store
     logger.info(f"Processing {len(documents)} documents...")
-    logger.info(f"Chunk size: {CHUNK_SIZE} tokens, overlap: {CHUNK_OVERLAP} tokens")
+    logger.info(
+        f"Chunk size: {settings.rag.chunk_size} tokens, "
+        f"overlap: {settings.rag.chunk_overlap} tokens"
+    )
 
     index = VectorStoreIndex.from_documents(
         documents,
@@ -306,12 +302,12 @@ def persist_index(index: VectorStoreIndex) -> None:
 
     Next time, we can load this instead of rebuilding from scratch.
     """
-    logger.info(f"Persisting index to {INDEX_DIR}")
+    logger.info(f"Persisting index to {settings.paths.index_dir}")
 
-    INDEX_DIR.mkdir(parents=True, exist_ok=True)
-    index.storage_context.persist(persist_dir=str(INDEX_DIR))
+    settings.paths.index_dir.mkdir(parents=True, exist_ok=True)
+    index.storage_context.persist(persist_dir=str(settings.paths.index_dir))
 
-    logger.info(f"Index saved to {INDEX_DIR}")
+    logger.info(f"Index saved to {settings.paths.index_dir}")
 
 
 def load_existing_index() -> VectorStoreIndex | None:
@@ -321,20 +317,20 @@ def load_existing_index() -> VectorStoreIndex | None:
     Returns:
         VectorStoreIndex if found, None otherwise
     """
-    if not INDEX_DIR.exists():
+    if not settings.paths.index_dir.exists():
         return None
 
     try:
-        logger.info(f"Loading existing index from {INDEX_DIR}")
+        logger.info(f"Loading existing index from {settings.paths.index_dir}")
 
         # Need to configure embedding model before loading
         embed_model = OpenAIEmbedding(
-            model="text-embedding-3-small",
+            model=settings.rag.embedding_model,
             api_key=settings.openai_api_key,
         )
         Settings.embed_model = embed_model
 
-        storage_context = StorageContext.from_defaults(persist_dir=str(INDEX_DIR))
+        storage_context = StorageContext.from_defaults(persist_dir=str(settings.paths.index_dir))
         index = cast(VectorStoreIndex, load_index_from_storage(storage_context))
 
         logger.info("Existing index loaded successfully")

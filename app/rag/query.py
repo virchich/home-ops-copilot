@@ -128,14 +128,14 @@ def query(question: str) -> QueryResponse:
     # 3. Validates the response against the Pydantic model
     # 4. Retries if validation fails (configurable)
     llm_response = client.chat.completions.create(
-        model=settings.openai_model,
+        model=settings.llm.model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": question},
         ],
         response_model=LLMResponse,  # This is the magic - instructor enforces this
-        temperature=0.3,
-        max_completion_tokens=1000,  # GPT-5.x uses max_completion_tokens instead of max_tokens
+        temperature=settings.llm.temperature,
+        max_completion_tokens=settings.llm.max_completion_tokens,
     )
 
     # Week 1: No citations since no retrieval
