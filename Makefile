@@ -1,19 +1,21 @@
-.PHONY: install check test eval eval-quick run ingest ingest-rebuild check-docs clean clean-reports help
+.PHONY: install check test test-unit test-integration eval eval-quick run ingest ingest-rebuild check-docs clean clean-reports help
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  make install       - Install dependencies with uv"
-	@echo "  make check         - Run static analysis (ruff + mypy)"
-	@echo "  make test          - Run tests with pytest"
-	@echo "  make eval          - Run evaluation on golden questions"
-	@echo "  make eval-quick    - Run evaluation on 5 questions (quick test)"
-	@echo "  make run           - Start FastAPI development server"
-	@echo "  make ingest        - Run document ingestion (uses existing index if available)"
-	@echo "  make ingest-rebuild - Force rebuild the vector index from scratch"
-	@echo "  make check-docs    - Check for PDFs missing from metadata.json"
-	@echo "  make clean         - Remove cache files and build artifacts"
-	@echo "  make clean-reports - Remove eval report files"
+	@echo "  make install          - Install dependencies with uv"
+	@echo "  make check            - Run static analysis (ruff + mypy)"
+	@echo "  make test             - Run all tests (unit + integration)"
+	@echo "  make test-unit        - Run unit tests only (fast, no external deps)"
+	@echo "  make test-integration - Run integration tests only (requires index)"
+	@echo "  make eval             - Run evaluation on golden questions"
+	@echo "  make eval-quick       - Run evaluation on 5 questions (quick test)"
+	@echo "  make run              - Start FastAPI development server"
+	@echo "  make ingest           - Run document ingestion (uses existing index if available)"
+	@echo "  make ingest-rebuild   - Force rebuild the vector index from scratch"
+	@echo "  make check-docs       - Check for PDFs missing from metadata.json"
+	@echo "  make clean            - Remove cache files and build artifacts"
+	@echo "  make clean-reports    - Remove eval report files"
 
 # Install dependencies
 install:
@@ -25,9 +27,17 @@ check:
 	uv run ruff format
 	uv run mypy .
 
-# Run tests
+# Run all tests (unit + integration)
 test:
 	uv run pytest
+
+# Run unit tests only (fast, no external dependencies)
+test-unit:
+	uv run pytest -m "not integration"
+
+# Run integration tests only (requires index to be built)
+test-integration:
+	uv run pytest -m integration
 
 # Run full evaluation (50 questions)
 eval:
