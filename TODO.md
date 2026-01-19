@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 2 Complete
-**Last Updated**: 2026-01-12
-**Current Focus**: Ready for Week 3 - RAG query with citations
+**Phase**: Week 3 Complete
+**Last Updated**: 2026-01-19
+**Current Focus**: Ready for Week 4 - Retrieval quality improvements
 
 ---
 
@@ -46,11 +46,12 @@
 
 **Goal**: Get basic RAG working with citations.
 
-- [ ] Implement query endpoint: `POST /ask {question}`
-- [ ] Return: answer + top_k sources (citations)
-- [ ] Add "insufficient evidence" fallback (no sources → say you can't confirm)
+- [x] Implement query endpoint: `POST /ask {question}`
+- [x] Return: answer + top_k sources (citations)
+- [x] Add "insufficient evidence" fallback (no sources → say you can't confirm)
+- [x] Validate citations against retrieved sources (filter hallucinations)
 
-**Deliverable**: You can ask 10 questions and get cited answers.
+**Deliverable**: You can ask 10 questions and get cited answers. ✅
 
 ---
 
@@ -168,7 +169,7 @@ These are the first things to tackle in Week 1:
 
 1. [x] FastAPI skeleton + `/ask` endpoint stub
 2. [x] Ingest: load a single PDF manual → chunk → index → query *(Week 2)*
-3. [ ] Return citations in the response (even if ugly at first) *(Week 3)*
+3. [x] Return citations in the response (even if ugly at first) *(Week 3)*
 4. [x] Build `golden_questions.jsonl` (50 Qs) + `run_eval.py`
 5. [ ] Add Langfuse trace wrapper around `/ask` endpoint *(Week 8)*
 
@@ -181,6 +182,28 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-01-19** - Week 3 Complete
+- **Phase 2**: Integrated retrieval into `/ask` endpoint
+  - `query()` now calls `retrieve()` to get relevant chunks from vector index
+  - Formats chunks as `[Source N: filename - device]` for LLM context
+  - Updated system prompt to instruct citation format
+  - Response includes `contexts` field for evaluation
+- **Phase 3**: Citation validation and enrichment
+  - Added `build_source_mapping()` to map source index → node metadata
+  - Added `enrich_citations()` to validate LLM citations against retrieved sources
+  - Matching strategies: Source N pattern, file_name - device_name, file_name substring
+  - Hallucinated citations (not matching any source) are filtered out
+- **Phase 4**: Insufficient evidence fallback
+  - Added `min_relevance_score` setting (default: 0.3)
+  - Added `_has_sufficient_evidence()` to check top retrieval score
+  - Returns fallback response for out-of-scope questions (skips LLM call)
+- Test improvements:
+  - Refactored unit tests to test behavior over implementation
+  - Added error handling tests, citation enrichment tests, fallback tests
+  - Added integration test for out-of-scope questions
+  - Total tests: 146 (135 unit + 11 integration)
+- Key files: `app/rag/query.py`, `app/rag/retriever.py`, `app/core/config.py`
 
 **2026-01-12** - Week 2 Complete
 - Added 7 PDF manuals to `data/raw_docs/` (furnace, thermostat, HRV, water heater, water softener, humidifier, energy meter)
@@ -234,6 +257,9 @@ These are the first things to tackle in Week 1:
 | 2026-01-12 | pypdf + pdfplumber fallback | pypdf is faster but fails on some fonts; pdfplumber handles edge cases |
 | 2026-01-12 | Local file-based vector index | Simple persistence, no database setup needed; can migrate to Postgres/MongoDB later |
 | 2026-01-12 | 512 token chunks with 50 overlap | Good balance of precision and context; sentence-aware splitting |
+| 2026-01-19 | Validate citations against retrieved sources | Prevents hallucinated citations; only returns citations matching actual sources |
+| 2026-01-19 | Insufficient evidence fallback | Skips LLM call when retrieval quality is poor; saves cost and prevents hallucination |
+| 2026-01-19 | min_relevance_score = 0.3 | Conservative threshold; can tune based on eval results |
 
 ---
 
