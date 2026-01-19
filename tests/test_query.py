@@ -13,6 +13,7 @@ import pytest
 
 from app.rag.models import Citation, QueryResponse, RiskLevel
 from app.rag.query import (
+    _has_sufficient_evidence,
     _match_citation_to_source,
     enrich_citations,
     get_llm_client,
@@ -134,8 +135,10 @@ class TestQueryHappyPath:
 
     def test_returns_answer_from_llm(self, mock_rag_pipeline) -> None:
         """Should pass through answer from LLM response."""
-        mock_rag_pipeline["retrieve"].return_value = []
-        mock_rag_pipeline["format"].return_value = "No docs"
+        # Provide nodes that pass relevance threshold
+        nodes = [create_mock_node("Some relevant text", 0.8)]
+        mock_rag_pipeline["retrieve"].return_value = nodes
+        mock_rag_pipeline["format"].return_value = "[Source 1]\nSome text"
         mock_rag_pipeline["client"].chat.completions.create.return_value = (
             create_mock_llm_response(answer="Change filter every 3 months")
         )
@@ -146,8 +149,10 @@ class TestQueryHappyPath:
 
     def test_returns_risk_level_from_llm(self, mock_rag_pipeline) -> None:
         """Should convert and return risk level from LLM response."""
-        mock_rag_pipeline["retrieve"].return_value = []
-        mock_rag_pipeline["format"].return_value = "No docs"
+        # Provide nodes that pass relevance threshold
+        nodes = [create_mock_node("Gas valve info", 0.8)]
+        mock_rag_pipeline["retrieve"].return_value = nodes
+        mock_rag_pipeline["format"].return_value = "[Source 1]\nGas valve info"
         mock_rag_pipeline["client"].chat.completions.create.return_value = (
             create_mock_llm_response(risk_level="HIGH")
         )
@@ -234,8 +239,10 @@ class TestQueryPromptConstruction:
 
     def test_question_included_in_prompt(self, mock_rag_pipeline) -> None:
         """User's question should be included in the LLM prompt."""
-        mock_rag_pipeline["retrieve"].return_value = []
-        mock_rag_pipeline["format"].return_value = "No docs"
+        # Provide nodes that pass relevance threshold
+        nodes = [create_mock_node("HRV cleaning info", 0.8)]
+        mock_rag_pipeline["retrieve"].return_value = nodes
+        mock_rag_pipeline["format"].return_value = "[Source 1]\nHRV info"
         mock_rag_pipeline["client"].chat.completions.create.return_value = (
             create_mock_llm_response()
         )
@@ -267,8 +274,10 @@ class TestQueryPromptConstruction:
 
     def test_system_prompt_is_first_message(self, mock_rag_pipeline) -> None:
         """System prompt should be the first message to LLM."""
-        mock_rag_pipeline["retrieve"].return_value = []
-        mock_rag_pipeline["format"].return_value = "No docs"
+        # Provide nodes that pass relevance threshold
+        nodes = [create_mock_node("Some text", 0.8)]
+        mock_rag_pipeline["retrieve"].return_value = nodes
+        mock_rag_pipeline["format"].return_value = "[Source 1]\nSome text"
         mock_rag_pipeline["client"].chat.completions.create.return_value = (
             create_mock_llm_response()
         )
@@ -301,14 +310,105 @@ class TestQueryErrorHandling:
 
     def test_llm_api_exception_propagates(self, mock_rag_pipeline) -> None:
         """LLM API exceptions should propagate to caller."""
-        mock_rag_pipeline["retrieve"].return_value = []
-        mock_rag_pipeline["format"].return_value = "No docs"
+        # Provide nodes that pass relevance threshold so LLM is called
+        nodes = [create_mock_node("Some text", 0.8)]
+        mock_rag_pipeline["retrieve"].return_value = nodes
+        mock_rag_pipeline["format"].return_value = "[Source 1]\nSome text"
         mock_rag_pipeline["client"].chat.completions.create.side_effect = (
             Exception("API rate limit exceeded")
         )
 
         with pytest.raises(Exception, match="rate limit"):
             query("test")
+
+
+# =============================================================================
+# UNIT TESTS - Insufficient Evidence Fallback
+# =============================================================================
+
+
+class TestHasSufficientEvidence:
+    """Tests for _has_sufficient_evidence function."""
+
+    def test_returns_false_for_empty_nodes(self) -> None:
+        """Should return False when no nodes retrieved."""
+        assert _has_sufficient_evidence([]) is False
+
+    def test_returns_false_for_low_score(self) -> None:
+        """Should return False when top score is below threshold."""
+        nodes = [create_mock_node("text", 0.1)]  # Very low score
+
+        with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.min_relevance_score = 0.3
+            assert _has_sufficient_evidence(nodes) is False
+
+    def test_returns_true_for_high_score(self) -> None:
+        """Should return True when top score meets threshold."""
+        nodes = [create_mock_node("text", 0.8)]  # High score
+
+        with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.min_relevance_score = 0.3
+            assert _has_sufficient_evidence(nodes) is True
+
+    def test_returns_true_for_exact_threshold(self) -> None:
+        """Should return True when top score equals threshold."""
+        nodes = [create_mock_node("text", 0.5)]
+
+        with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.min_relevance_score = 0.5
+            assert _has_sufficient_evidence(nodes) is True
+
+    def test_uses_first_node_score(self) -> None:
+        """Should check the first (highest) node's score."""
+        nodes = [
+            create_mock_node("best match", 0.9),
+            create_mock_node("second best", 0.5),
+            create_mock_node("third", 0.2),
+        ]
+
+        with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.min_relevance_score = 0.7
+            # Should pass because first node (0.9) exceeds threshold
+            assert _has_sufficient_evidence(nodes) is True
+
+
+class TestQueryInsufficientEvidence:
+    """Tests for query() insufficient evidence fallback."""
+
+    def test_returns_fallback_for_empty_retrieval(self, mock_rag_pipeline) -> None:
+        """Should return fallback response when no nodes retrieved."""
+        mock_rag_pipeline["retrieve"].return_value = []
+
+        result = query("What is the meaning of life?")
+
+        assert "don't have enough information" in result.answer
+        assert result.citations == []
+        assert result.risk_level == RiskLevel.LOW
+        assert result.contexts == []
+
+    def test_returns_fallback_for_low_relevance(self, mock_rag_pipeline) -> None:
+        """Should return fallback when top score is below threshold."""
+        # Mock low-scoring nodes
+        low_score_nodes = [create_mock_node("irrelevant text", 0.1)]
+        mock_rag_pipeline["retrieve"].return_value = low_score_nodes
+
+        with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.min_relevance_score = 0.3
+
+            result = query("Random unrelated question")
+
+            assert "don't have enough information" in result.answer
+            assert result.citations == []
+            assert result.contexts == []
+
+    def test_does_not_call_llm_for_insufficient_evidence(self, mock_rag_pipeline) -> None:
+        """Should skip LLM call when evidence is insufficient."""
+        mock_rag_pipeline["retrieve"].return_value = []
+
+        query("Unknown topic question")
+
+        # LLM should not be called
+        mock_rag_pipeline["client"].chat.completions.create.assert_not_called()
 
 
 # =============================================================================

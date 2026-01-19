@@ -187,14 +187,33 @@ def _build_enriched_citation(citation: Citation, source_metadata: dict) -> Citat
 # =============================================================================
 
 
+def _has_sufficient_evidence(nodes: list) -> bool:
+    """
+    Check if retrieved nodes have sufficient relevance to answer the question.
+
+    Args:
+        nodes: Retrieved nodes with scores
+
+    Returns:
+        True if there's sufficient evidence, False otherwise.
+    """
+    if not nodes:
+        return False
+
+    # Check if the best match meets the minimum relevance threshold
+    top_score = nodes[0].score
+    return top_score >= settings.rag.min_relevance_score
+
+
 def query(question: str) -> QueryResponse:
     """
     Query the system with a question and get a structured response.
 
     This is the main entry point for the RAG pipeline. It:
     1. Retrieves relevant documents from the vector index
-    2. Calls the LLM with retrieved context
-    3. Returns a structured response with citations
+    2. Checks if retrieval found sufficiently relevant content
+    3. Calls the LLM with retrieved context (or returns fallback)
+    4. Returns a structured response with citations
 
     Args:
         question: The user's question about home maintenance.
@@ -202,16 +221,31 @@ def query(question: str) -> QueryResponse:
     Returns:
         QueryResponse with answer, citations, risk level, and contexts.
     """
-    # Get cached LLM client
-    client = get_llm_client()
-
     # Retrieve relevant chunks from the knowledge base
     retrieved_nodes = retrieve(question)
+
+    # Check if we have sufficient evidence to answer
+    if not _has_sufficient_evidence(retrieved_nodes):
+        return QueryResponse(
+            answer=(
+                "I don't have enough information in my knowledge base to answer "
+                "this question reliably. Please try rephrasing your question or "
+                "ask about a topic covered in the available documentation."
+            ),
+            citations=[],
+            risk_level=RiskLevel.LOW,
+            contexts=[],
+        )
+
+    # Extract contexts for response
     context = format_contexts_for_llm(retrieved_nodes)
     contexts = [node.node.text for node in retrieved_nodes]
 
     # Build source mapping for citation validation
     source_mapping = build_source_mapping(retrieved_nodes)
+
+    # Get cached LLM client
+    client = get_llm_client()
 
     # Build user message with retrieved context
     user_message = f"""Context from your knowledge base:
