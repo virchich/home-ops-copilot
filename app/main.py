@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.rag.models import Citation
 from app.rag.query import query
 
 app = FastAPI(
@@ -13,28 +14,30 @@ app = FastAPI(
 )
 
 
+# =============================================================================
+# REQUEST/RESPONSE MODELS
+# =============================================================================
+# These are API-specific models. Internal models live in app/rag/models.py
+
+
 class AskRequest(BaseModel):
     """Request body for /ask endpoint."""
 
     question: str
 
 
-class CitationResponse(BaseModel):
-    """Citation in the response."""
-
-    source: str
-    page: int | None = None
-    section: str | None = None
-    quote: str | None = None
-
-
 class AskResponse(BaseModel):
     """Response from /ask endpoint."""
 
     answer: str
-    citations: list[CitationResponse]
+    citations: list[Citation]  # Reuse shared Citation model
     risk_level: str
     contexts: list[str]
+
+
+# =============================================================================
+# ENDPOINTS
+# =============================================================================
 
 
 @app.get("/health")
@@ -60,15 +63,7 @@ def ask(request: AskRequest) -> AskResponse:
 
     return AskResponse(
         answer=result.answer,
-        citations=[
-            CitationResponse(
-                source=c.source,
-                page=c.page,
-                section=c.section,
-                quote=c.quote,
-            )
-            for c in result.citations
-        ],
+        citations=result.citations,  # No conversion needed - same model
         risk_level=result.risk_level.value,
         contexts=result.contexts,
     )

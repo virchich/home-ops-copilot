@@ -1,78 +1,47 @@
 """Query engine for RAG-based question answering.
 
-Week 1: Stub implementation that calls LLM directly without retrieval.
-Week 2+: Will add actual document retrieval.
+This module orchestrates the RAG pipeline:
+1. Retrieve relevant documents (Phase 2+)
+2. Generate answer using LLM with retrieved context
+3. Return structured response with citations
 
 Uses the `instructor` library for structured, Pydantic-validated LLM outputs.
-This is more reliable than manual parsing and leverages OpenAI's function calling.
 """
 
-from enum import Enum
-from typing import Literal
+from functools import lru_cache
 
 import instructor
 from openai import OpenAI
-from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.rag.models import Citation, LLMResponse, QueryResponse, RiskLevel
+
 
 # =============================================================================
-# RESPONSE MODELS (Pydantic)
+# LLM CLIENT (SINGLETON)
 # =============================================================================
-# These models define the structure of LLM outputs.
-# Instructor uses these to generate a JSON schema and validate responses.
+# Create the client once and reuse it across requests.
+# This avoids the overhead of creating a new client per request.
 
 
-class RiskLevel(str, Enum):
-    """Risk level for home maintenance advice."""
-
-    LOW = "LOW"
-    MED = "MED"
-    HIGH = "HIGH"
-
-
-class Citation(BaseModel):
-    """A citation to a source document."""
-
-    source: str = Field(description="The source document name or path")
-    page: int | None = Field(default=None, description="Page number if applicable")
-    section: str | None = Field(default=None, description="Section name if applicable")
-    quote: str | None = Field(default=None, description="Relevant quote from the source")
-
-
-class LLMResponse(BaseModel):
+@lru_cache(maxsize=1)
+def get_llm_client() -> instructor.Instructor:
     """
-    Structured response from the LLM.
+    Get a cached instructor-patched OpenAI client.
 
-    Instructor will enforce this schema via OpenAI function calling.
-    The LLM MUST return data matching this structure.
+    The client is created once and reused for all subsequent calls.
+    This is more efficient than creating a new client per request.
+
+    Returns:
+        instructor.Instructor: OpenAI client with instructor patching
     """
-
-    answer: str = Field(
-        description="A concise, actionable answer to the user's question. "
-        "If risk is HIGH, MUST recommend calling a licensed professional."
-    )
-    risk_level: Literal["LOW", "MED", "HIGH"] = Field(
-        description="Risk assessment for the task. "
-        "LOW = safe DIY, MED = some caution needed, HIGH = professional required"
-    )
-    reasoning: str = Field(description="Brief explanation of why this risk level was assigned")
-
-
-class QueryResponse(BaseModel):
-    """Final response from the query engine (includes retrieval context)."""
-
-    answer: str
-    citations: list[Citation]
-    risk_level: RiskLevel
-    contexts: list[str]  # Retrieved context chunks (for eval)
+    return instructor.from_openai(OpenAI(api_key=settings.openai_api_key))
 
 
 # =============================================================================
 # SYSTEM PROMPT
 # =============================================================================
-# Note: We no longer need format instructions because instructor handles that.
-# The prompt focuses on behavior and domain knowledge.
+
 
 SYSTEM_PROMPT = """You are a home maintenance assistant. Answer questions about home maintenance, troubleshooting, and repairs.
 
@@ -101,24 +70,23 @@ def query(question: str) -> QueryResponse:
     """
     Query the system with a question and get a structured response.
 
-    Uses instructor to get Pydantic-validated outputs from the LLM.
-    This is more reliable than manual parsing.
+    This is the main entry point for the RAG pipeline. It:
+    1. Retrieves relevant documents (TODO: Phase 2)
+    2. Calls the LLM with context
+    3. Returns a structured response with citations
 
     Args:
         question: The user's question about home maintenance.
 
     Returns:
         QueryResponse with answer, citations, risk level, and contexts.
-
-    Note:
-        Week 1 stub: No retrieval, just LLM call.
-        Week 2+: Will retrieve relevant documents first.
     """
-    # Patch OpenAI client with instructor for structured outputs
-    client = instructor.from_openai(OpenAI(api_key=settings.openai_api_key))
+    # Get cached LLM client
+    client = get_llm_client()
 
-    # Week 1: No retrieval, just call LLM directly
-    # TODO: Week 2+ - Add retrieval step here
+    # TODO: Phase 2 - Add retrieval step here
+    # retrieved_nodes = retrieve(question)
+    # context = format_contexts_for_llm(retrieved_nodes)
     contexts: list[str] = []
 
     # Call LLM with structured output
@@ -133,14 +101,14 @@ def query(question: str) -> QueryResponse:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": question},
         ],
-        response_model=LLMResponse,  # This is the magic - instructor enforces this
+        response_model=LLMResponse,
         temperature=settings.llm.temperature,
         max_completion_tokens=settings.llm.max_completion_tokens,
     )
 
-    # Week 1: No citations since no retrieval
-    # TODO: Week 2+ - Extract citations from retrieved docs
-    citations: list[Citation] = []
+    # TODO: Phase 2 - Extract citations from retrieved docs
+    # For now, LLM returns empty citations since no context provided
+    citations: list[Citation] = llm_response.citations
 
     return QueryResponse(
         answer=llm_response.answer,
