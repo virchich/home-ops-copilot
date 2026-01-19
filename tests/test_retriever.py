@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.rag.retriever import (
+    build_source_mapping,
     format_contexts_for_llm,
     get_index,
     get_node_metadata,
@@ -146,6 +147,67 @@ class TestGetNodeMetadata:
         assert result["device_type"] == ""
         assert result["device_name"] == ""
         assert result["manufacturer"] == ""
+
+
+# =============================================================================
+# UNIT TESTS - build_source_mapping
+# =============================================================================
+
+
+class TestBuildSourceMapping:
+    """Tests for build_source_mapping function."""
+
+    def test_builds_mapping_with_correct_indices(self) -> None:
+        """Should create 1-based index mapping."""
+        nodes = [
+            create_mock_node("Text 1", 0.9, "doc1.pdf", "Furnace"),
+            create_mock_node("Text 2", 0.8, "doc2.pdf", "HRV"),
+        ]
+
+        result = build_source_mapping(nodes)
+
+        assert 1 in result
+        assert 2 in result
+        assert 0 not in result  # 1-based indexing
+
+    def test_maps_metadata_correctly(self) -> None:
+        """Should map node metadata to indices."""
+        nodes = [
+            create_mock_node(
+                "Text",
+                0.9,
+                file_name="manual.pdf",
+                device_type="furnace",
+                device_name="OM9GFRC",
+                manufacturer="Carrier",
+            ),
+        ]
+
+        result = build_source_mapping(nodes)
+
+        assert result[1]["file_name"] == "manual.pdf"
+        assert result[1]["device_name"] == "OM9GFRC"
+        assert result[1]["score"] == 0.9
+
+    def test_empty_nodes_returns_empty_mapping(self) -> None:
+        """Should return empty dict for empty nodes list."""
+        result = build_source_mapping([])
+
+        assert result == {}
+
+    def test_preserves_node_order(self) -> None:
+        """Source indices should correspond to node order."""
+        nodes = [
+            create_mock_node("First", 0.9, "first.pdf"),
+            create_mock_node("Second", 0.8, "second.pdf"),
+            create_mock_node("Third", 0.7, "third.pdf"),
+        ]
+
+        result = build_source_mapping(nodes)
+
+        assert result[1]["file_name"] == "first.pdf"
+        assert result[2]["file_name"] == "second.pdf"
+        assert result[3]["file_name"] == "third.pdf"
 
 
 # =============================================================================
