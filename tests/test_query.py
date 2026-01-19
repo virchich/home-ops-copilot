@@ -12,7 +12,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.rag.models import Citation, QueryResponse, RiskLevel
-from app.rag.query import get_llm_client, query
+from app.rag.query import (
+    _match_citation_to_source,
+    enrich_citations,
+    get_llm_client,
+    query,
+)
 
 
 # =============================================================================
@@ -151,11 +156,15 @@ class TestQueryHappyPath:
 
         assert result.risk_level == RiskLevel.HIGH
 
-    def test_returns_citations_from_llm(self, mock_rag_pipeline) -> None:
-        """Should pass through citations from LLM response."""
-        citation = Citation(source="manual.pdf", page=5, quote="Replace annually")
-        mock_rag_pipeline["retrieve"].return_value = []
-        mock_rag_pipeline["format"].return_value = "No docs"
+    def test_returns_enriched_citations_from_llm(self, mock_rag_pipeline) -> None:
+        """Should return enriched citations that match retrieved sources."""
+        # Mock a retrieved node with metadata
+        nodes = [create_mock_node("Some text", 0.9, file_name="manual.pdf", device_name="Furnace")]
+        mock_rag_pipeline["retrieve"].return_value = nodes
+        mock_rag_pipeline["format"].return_value = "[Source 1: manual.pdf - Furnace]\nSome text"
+
+        # LLM cites the retrieved source
+        citation = Citation(source="manual.pdf - Furnace", page=5, quote="Replace annually")
         mock_rag_pipeline["client"].chat.completions.create.return_value = (
             create_mock_llm_response(citations=[citation])
         )
@@ -163,8 +172,26 @@ class TestQueryHappyPath:
         result = query("test")
 
         assert len(result.citations) == 1
-        assert result.citations[0].source == "manual.pdf"
+        assert "manual.pdf" in result.citations[0].source
         assert result.citations[0].page == 5
+
+    def test_filters_out_unmatched_citations(self, mock_rag_pipeline) -> None:
+        """Should filter out citations that don't match any retrieved source."""
+        # Mock retrieved nodes
+        nodes = [create_mock_node("Some text", 0.9, file_name="real-doc.pdf")]
+        mock_rag_pipeline["retrieve"].return_value = nodes
+        mock_rag_pipeline["format"].return_value = "[Source 1]\nSome text"
+
+        # LLM cites a non-existent source (hallucination)
+        hallucinated_citation = Citation(source="fake-doc.pdf", page=1)
+        mock_rag_pipeline["client"].chat.completions.create.return_value = (
+            create_mock_llm_response(citations=[hallucinated_citation])
+        )
+
+        result = query("test")
+
+        # Hallucinated citation should be filtered out
+        assert len(result.citations) == 0
 
     def test_returns_contexts_from_retrieved_nodes(self, mock_rag_pipeline) -> None:
         """Should populate contexts with text from retrieved nodes."""
@@ -282,3 +309,149 @@ class TestQueryErrorHandling:
 
         with pytest.raises(Exception, match="rate limit"):
             query("test")
+
+
+# =============================================================================
+# UNIT TESTS - Citation Enrichment Functions
+# =============================================================================
+
+
+class TestCitationMatching:
+    """Tests for _match_citation_to_source function."""
+
+    def test_matches_by_source_index(self) -> None:
+        """Should match 'Source N' pattern to source mapping."""
+        source_mapping = {
+            1: {"file_name": "manual.pdf", "device_name": "Furnace"},
+            2: {"file_name": "guide.pdf", "device_name": "HRV"},
+        }
+        citation = Citation(source="Source 1")
+
+        result = _match_citation_to_source(citation, source_mapping)
+
+        assert result is not None
+        assert result["file_name"] == "manual.pdf"
+
+    def test_matches_by_bracketed_source_index(self) -> None:
+        """Should match '[Source N]' pattern."""
+        source_mapping = {1: {"file_name": "manual.pdf", "device_name": "Furnace"}}
+        citation = Citation(source="[Source 1]")
+
+        result = _match_citation_to_source(citation, source_mapping)
+
+        assert result is not None
+        assert result["file_name"] == "manual.pdf"
+
+    def test_matches_by_file_name(self) -> None:
+        """Should match by file name substring."""
+        source_mapping = {1: {"file_name": "furnace-manual.pdf", "device_name": "Furnace"}}
+        citation = Citation(source="furnace-manual.pdf - Furnace")
+
+        result = _match_citation_to_source(citation, source_mapping)
+
+        assert result is not None
+        assert result["file_name"] == "furnace-manual.pdf"
+
+    def test_matches_partial_file_name(self) -> None:
+        """Should match when file name is contained in citation source."""
+        source_mapping = {1: {"file_name": "manual.pdf", "device_name": ""}}
+        citation = Citation(source="From manual.pdf page 5")
+
+        result = _match_citation_to_source(citation, source_mapping)
+
+        assert result is not None
+        assert result["file_name"] == "manual.pdf"
+
+    def test_returns_none_for_no_match(self) -> None:
+        """Should return None when citation doesn't match any source."""
+        source_mapping = {1: {"file_name": "real-doc.pdf", "device_name": "Device"}}
+        citation = Citation(source="fake-doc.pdf")
+
+        result = _match_citation_to_source(citation, source_mapping)
+
+        assert result is None
+
+    def test_returns_none_for_invalid_source_index(self) -> None:
+        """Should return None for source index that doesn't exist."""
+        source_mapping = {1: {"file_name": "manual.pdf", "device_name": "Furnace"}}
+        citation = Citation(source="Source 99")
+
+        result = _match_citation_to_source(citation, source_mapping)
+
+        assert result is None
+
+
+class TestEnrichCitations:
+    """Tests for enrich_citations function."""
+
+    def test_enriches_valid_citations(self) -> None:
+        """Should enrich citations with source metadata."""
+        source_mapping = {
+            1: {"file_name": "manual.pdf", "device_name": "Furnace"},
+        }
+        citations = [Citation(source="Source 1", page=5, quote="test quote")]
+
+        result = enrich_citations(citations, source_mapping)
+
+        assert len(result) == 1
+        assert result[0].source == "manual.pdf - Furnace"
+        assert result[0].page == 5
+        assert result[0].quote == "test quote"
+
+    def test_filters_unmatched_citations(self) -> None:
+        """Should filter out citations that don't match any source."""
+        source_mapping = {1: {"file_name": "real.pdf", "device_name": "Device"}}
+        citations = [
+            Citation(source="real.pdf"),  # Valid
+            Citation(source="fake.pdf"),  # Invalid - should be filtered
+        ]
+
+        result = enrich_citations(citations, source_mapping)
+
+        assert len(result) == 1
+        assert "real.pdf" in result[0].source
+
+    def test_returns_empty_for_empty_mapping(self) -> None:
+        """Should return empty list when source mapping is empty."""
+        citations = [Citation(source="any.pdf")]
+
+        result = enrich_citations(citations, {})
+
+        assert result == []
+
+    def test_returns_empty_for_empty_citations(self) -> None:
+        """Should return empty list when no citations provided."""
+        source_mapping = {1: {"file_name": "manual.pdf", "device_name": "Device"}}
+
+        result = enrich_citations([], source_mapping)
+
+        assert result == []
+
+    def test_preserves_llm_provided_fields(self) -> None:
+        """Should preserve page, section, and quote from LLM."""
+        source_mapping = {1: {"file_name": "manual.pdf", "device_name": "Device"}}
+        citations = [
+            Citation(
+                source="Source 1",
+                page=10,
+                section="Maintenance",
+                quote="Check filter monthly",
+            )
+        ]
+
+        result = enrich_citations(citations, source_mapping)
+
+        assert len(result) == 1
+        assert result[0].page == 10
+        assert result[0].section == "Maintenance"
+        assert result[0].quote == "Check filter monthly"
+
+    def test_handles_source_without_device_name(self) -> None:
+        """Should handle sources without device name gracefully."""
+        source_mapping = {1: {"file_name": "notes.pdf", "device_name": ""}}
+        citations = [Citation(source="notes.pdf")]
+
+        result = enrich_citations(citations, source_mapping)
+
+        assert len(result) == 1
+        assert result[0].source == "notes.pdf"  # No " - " suffix

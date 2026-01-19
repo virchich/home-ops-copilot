@@ -218,3 +218,24 @@ def get_node_metadata(node: NodeWithScore) -> dict:
         "manufacturer": metadata.get("manufacturer", ""),
         "score": node.score,
     }
+
+
+def build_source_mapping(nodes: list[NodeWithScore]) -> dict[int, dict]:
+    """
+    Build a mapping from source index to node metadata.
+
+    This mapping is used to validate and enrich LLM-generated citations.
+    The source indices (1, 2, 3, ...) correspond to the [Source N] labels
+    used in format_contexts_for_llm().
+
+    Args:
+        nodes: Retrieved nodes with scores
+
+    Returns:
+        Dictionary mapping source index (1-based) to metadata dict.
+        Example: {1: {"file_name": "manual.pdf", "device_name": "Furnace", ...}}
+    """
+    mapping = {}
+    for i, node in enumerate(nodes, 1):
+        mapping[i] = get_node_metadata(node)
+    return mapping
