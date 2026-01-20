@@ -276,11 +276,10 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
         return None
 
     try:
-        import os
-
         from datasets import Dataset
+        from openai import OpenAI
         from ragas import evaluate
-        from ragas.metrics._answer_relevance import AnswerRelevancy
+        from ragas.llms import llm_factory
         from ragas.metrics._context_precision import ContextPrecision
         from ragas.metrics._faithfulness import Faithfulness
 
@@ -291,15 +290,23 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
             print("Warning: OPENAI_API_KEY not set, skipping Ragas metrics")
             return None
 
-        # Ragas expects OPENAI_API_KEY in environment
-        # Set it temporarily for the evaluation
-        os.environ["OPENAI_API_KEY"] = settings.openai_api_key
-        os.environ["OPENAI_MODEL_NAME"] = settings.llm.model
+        # Ragas 0.4.x requires explicit client instances
+        client = OpenAI(api_key=settings.openai_api_key)
 
-        # Initialize metrics (they will use env vars for LLM config)
-        faithfulness = Faithfulness()
-        answer_relevancy = AnswerRelevancy()
-        context_precision = ContextPrecision()
+        # Create Ragas LLM wrapper
+        # Use a smaller model for evaluation to reduce cost
+        # Set higher max_tokens to avoid truncation issues with structured output
+        eval_model = "gpt-4o-mini"
+        ragas_llm = llm_factory(eval_model, client=client, max_tokens=8192)
+
+        # Initialize metrics
+        # Note: AnswerRelevancy is skipped due to Ragas 0.4.x embeddings API issue
+        # where it expects embed_query() which is a langchain-style method.
+        # The type: ignore comments below suppress Ragas library type stub issues.
+        faithfulness = Faithfulness(llm=ragas_llm)  # type: ignore[arg-type]
+        context_precision = ContextPrecision(llm=ragas_llm)  # type: ignore[arg-type]
+
+        metrics_to_run = [faithfulness, context_precision]
 
         # Prepare data for Ragas
         # Ragas expects: question, answer, contexts, ground_truth
@@ -315,7 +322,8 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
         # Run Ragas evaluation
         ragas_result = evaluate(
             dataset,
-            metrics=[faithfulness, answer_relevancy, context_precision],
+            metrics=metrics_to_run,
+            llm=ragas_llm,  # type: ignore[arg-type]
         )
 
         # ragas returns EvaluationResult - extract scores
@@ -330,7 +338,6 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
 
         return {
             "faithfulness": extract_score(ragas_result, "faithfulness"),
-            "answer_relevancy": extract_score(ragas_result, "answer_relevancy"),
             "context_precision": extract_score(ragas_result, "context_precision"),
             "questions_with_ground_truth": len(with_ground_truth),
         }
@@ -429,11 +436,11 @@ def print_summary(format_metrics: dict, ragas_metrics: dict | None) -> None:
     if ragas_metrics:
         print("\nRagas Metrics:")
         print(f"  Faithfulness:         {ragas_metrics['faithfulness']:.3f}")
-        print(f"  Answer Relevancy:     {ragas_metrics['answer_relevancy']:.3f}")
         print(f"  Context Precision:    {ragas_metrics['context_precision']:.3f}")
         print(
             f"  (Based on {ragas_metrics['questions_with_ground_truth']} questions with ground truth)"
         )
+        print("  Note: AnswerRelevancy skipped due to Ragas 0.4.x API issue")
     else:
         print("\nRagas Metrics: Not available (no ground truth in golden set)")
 
