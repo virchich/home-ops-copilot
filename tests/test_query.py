@@ -20,7 +20,6 @@ from app.rag.query import (
     query,
 )
 
-
 # =============================================================================
 # TEST FIXTURES
 # =============================================================================
@@ -59,10 +58,11 @@ def mock_rag_pipeline():
     """Fixture that mocks the RAG pipeline components."""
     get_llm_client.cache_clear()
 
-    with patch("app.rag.query.retrieve") as mock_retrieve, \
-         patch("app.rag.query.format_contexts_for_llm") as mock_format, \
-         patch("app.rag.query.get_llm_client") as mock_get_client:
-
+    with (
+        patch("app.rag.query.retrieve") as mock_retrieve,
+        patch("app.rag.query.format_contexts_for_llm") as mock_format,
+        patch("app.rag.query.get_llm_client") as mock_get_client,
+    ):
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
 
@@ -85,8 +85,10 @@ class TestLLMClientSingleton:
         """Should return an instructor client."""
         get_llm_client.cache_clear()
 
-        with patch("app.rag.query.OpenAI") as mock_openai, \
-             patch("app.rag.query.instructor.from_openai") as mock_instructor:
+        with (
+            patch("app.rag.query.OpenAI") as mock_openai,
+            patch("app.rag.query.instructor.from_openai") as mock_instructor,
+        ):
             mock_client = MagicMock()
             mock_instructor.return_value = mock_client
 
@@ -100,8 +102,10 @@ class TestLLMClientSingleton:
         """Should return the same cached client on subsequent calls."""
         get_llm_client.cache_clear()
 
-        with patch("app.rag.query.OpenAI") as mock_openai, \
-             patch("app.rag.query.instructor.from_openai") as mock_instructor:
+        with (
+            patch("app.rag.query.OpenAI") as mock_openai,
+            patch("app.rag.query.instructor.from_openai") as mock_instructor,
+        ):
             mock_client = MagicMock()
             mock_instructor.return_value = mock_client
 
@@ -125,9 +129,9 @@ class TestQueryHappyPath:
         """Should return a QueryResponse object."""
         mock_rag_pipeline["retrieve"].return_value = []
         mock_rag_pipeline["format"].return_value = "No docs"
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response()
-        )
+        mock_rag_pipeline[
+            "client"
+        ].chat.completions.create.return_value = create_mock_llm_response()
 
         result = query("test question")
 
@@ -139,8 +143,8 @@ class TestQueryHappyPath:
         nodes = [create_mock_node("Some relevant text", 0.8)]
         mock_rag_pipeline["retrieve"].return_value = nodes
         mock_rag_pipeline["format"].return_value = "[Source 1]\nSome text"
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response(answer="Change filter every 3 months")
+        mock_rag_pipeline["client"].chat.completions.create.return_value = create_mock_llm_response(
+            answer="Change filter every 3 months"
         )
 
         result = query("How often to change filter?")
@@ -153,8 +157,8 @@ class TestQueryHappyPath:
         nodes = [create_mock_node("Gas valve info", 0.8)]
         mock_rag_pipeline["retrieve"].return_value = nodes
         mock_rag_pipeline["format"].return_value = "[Source 1]\nGas valve info"
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response(risk_level="HIGH")
+        mock_rag_pipeline["client"].chat.completions.create.return_value = create_mock_llm_response(
+            risk_level="HIGH"
         )
 
         result = query("How to replace gas valve?")
@@ -170,8 +174,8 @@ class TestQueryHappyPath:
 
         # LLM cites the retrieved source
         citation = Citation(source="manual.pdf - Furnace", page=5, quote="Replace annually")
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response(citations=[citation])
+        mock_rag_pipeline["client"].chat.completions.create.return_value = create_mock_llm_response(
+            citations=[citation]
         )
 
         result = query("test")
@@ -189,8 +193,8 @@ class TestQueryHappyPath:
 
         # LLM cites a non-existent source (hallucination)
         hallucinated_citation = Citation(source="fake-doc.pdf", page=1)
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response(citations=[hallucinated_citation])
+        mock_rag_pipeline["client"].chat.completions.create.return_value = create_mock_llm_response(
+            citations=[hallucinated_citation]
         )
 
         result = query("test")
@@ -206,9 +210,9 @@ class TestQueryHappyPath:
         ]
         mock_rag_pipeline["retrieve"].return_value = nodes
         mock_rag_pipeline["format"].return_value = "formatted context"
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response()
-        )
+        mock_rag_pipeline[
+            "client"
+        ].chat.completions.create.return_value = create_mock_llm_response()
 
         result = query("test")
 
@@ -220,9 +224,9 @@ class TestQueryHappyPath:
         """Should return empty contexts when retrieval finds nothing."""
         mock_rag_pipeline["retrieve"].return_value = []
         mock_rag_pipeline["format"].return_value = "No relevant documents found."
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response()
-        )
+        mock_rag_pipeline[
+            "client"
+        ].chat.completions.create.return_value = create_mock_llm_response()
 
         result = query("obscure question")
 
@@ -243,9 +247,9 @@ class TestQueryPromptConstruction:
         nodes = [create_mock_node("HRV cleaning info", 0.8)]
         mock_rag_pipeline["retrieve"].return_value = nodes
         mock_rag_pipeline["format"].return_value = "[Source 1]\nHRV info"
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response()
-        )
+        mock_rag_pipeline[
+            "client"
+        ].chat.completions.create.return_value = create_mock_llm_response()
 
         query("How do I clean my HRV?")
 
@@ -259,9 +263,9 @@ class TestQueryPromptConstruction:
         """Formatted retrieval context should be included in the LLM prompt."""
         mock_rag_pipeline["retrieve"].return_value = [create_mock_node("text", 0.9)]
         mock_rag_pipeline["format"].return_value = "[Source 1: manual.pdf]\nClean filters monthly"
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response()
-        )
+        mock_rag_pipeline[
+            "client"
+        ].chat.completions.create.return_value = create_mock_llm_response()
 
         query("test")
 
@@ -278,9 +282,9 @@ class TestQueryPromptConstruction:
         nodes = [create_mock_node("Some text", 0.8)]
         mock_rag_pipeline["retrieve"].return_value = nodes
         mock_rag_pipeline["format"].return_value = "[Source 1]\nSome text"
-        mock_rag_pipeline["client"].chat.completions.create.return_value = (
-            create_mock_llm_response()
-        )
+        mock_rag_pipeline[
+            "client"
+        ].chat.completions.create.return_value = create_mock_llm_response()
 
         query("test")
 
@@ -301,9 +305,7 @@ class TestQueryErrorHandling:
 
     def test_retriever_exception_propagates(self, mock_rag_pipeline) -> None:
         """Retriever exceptions should propagate to caller."""
-        mock_rag_pipeline["retrieve"].side_effect = FileNotFoundError(
-            "Index not found at ./index"
-        )
+        mock_rag_pipeline["retrieve"].side_effect = FileNotFoundError("Index not found at ./index")
 
         with pytest.raises(FileNotFoundError, match="Index not found"):
             query("test")
@@ -314,8 +316,8 @@ class TestQueryErrorHandling:
         nodes = [create_mock_node("Some text", 0.8)]
         mock_rag_pipeline["retrieve"].return_value = nodes
         mock_rag_pipeline["format"].return_value = "[Source 1]\nSome text"
-        mock_rag_pipeline["client"].chat.completions.create.side_effect = (
-            Exception("API rate limit exceeded")
+        mock_rag_pipeline["client"].chat.completions.create.side_effect = Exception(
+            "API rate limit exceeded"
         )
 
         with pytest.raises(Exception, match="rate limit"):

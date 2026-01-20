@@ -16,7 +16,6 @@ from app.rag.retriever import (
     retrieve,
 )
 
-
 # =============================================================================
 # TEST FIXTURES - Mock nodes for unit tests
 # =============================================================================
@@ -220,10 +219,11 @@ class TestRetrieveDefaults:
 
     def test_uses_settings_top_k_when_none(self) -> None:
         """Should use settings.rag.top_k when top_k is None."""
-        with patch("app.rag.retriever.get_index") as mock_get_index, \
-             patch("app.rag.retriever.VectorIndexRetriever") as mock_retriever_class, \
-             patch("app.rag.retriever.settings") as mock_settings:
-
+        with (
+            patch("app.rag.retriever.get_index") as mock_get_index,
+            patch("app.rag.retriever.VectorIndexRetriever") as mock_retriever_class,
+            patch("app.rag.retriever.settings") as mock_settings,
+        ):
             # Setup mocks
             mock_settings.rag.top_k = 7
             mock_index = MagicMock()
@@ -243,10 +243,11 @@ class TestRetrieveDefaults:
 
     def test_uses_explicit_top_k_when_provided(self) -> None:
         """Should use explicit top_k when provided."""
-        with patch("app.rag.retriever.get_index") as mock_get_index, \
-             patch("app.rag.retriever.VectorIndexRetriever") as mock_retriever_class, \
-             patch("app.rag.retriever.settings") as mock_settings:
-
+        with (
+            patch("app.rag.retriever.get_index") as mock_get_index,
+            patch("app.rag.retriever.VectorIndexRetriever") as mock_retriever_class,
+            patch("app.rag.retriever.settings") as mock_settings,
+        ):
             # Setup mocks
             mock_settings.rag.top_k = 5  # Default
             mock_index = MagicMock()

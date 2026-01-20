@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from app.core.config import Settings, PathSettings, RAGSettings, LLMSettings
+from app.core.config import LLMSettings, RAGSettings, Settings
 
 
 class TestSettingsDefaults:

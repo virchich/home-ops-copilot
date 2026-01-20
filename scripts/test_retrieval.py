@@ -15,12 +15,12 @@ from pathlib import Path
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.rag.retriever import retrieve, format_contexts_for_llm, get_node_metadata
+from app.rag.retriever import format_contexts_for_llm, get_node_metadata, retrieve
 
 
 def test_query(question: str) -> None:
     """Run a test query and display results."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"QUESTION: {question}")
     print("=" * 70)
 
