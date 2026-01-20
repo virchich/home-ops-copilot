@@ -17,7 +17,6 @@ from app.core.config import settings
 from app.rag.models import Citation, LLMResponse, QueryResponse, RiskLevel
 from app.rag.retriever import build_source_mapping, format_contexts_for_llm, retrieve
 
-
 # =============================================================================
 # LLM CLIENT (SINGLETON)
 # =============================================================================
@@ -128,6 +127,7 @@ def _match_citation_to_source(
 
     # Strategy 1: Parse "Source N" or "[Source N]" pattern
     import re
+
     match = re.search(r"[Ss]ource\s*(\d+)", source_str)
     if match:
         source_idx = int(match.group(1))
@@ -168,11 +168,7 @@ def _build_enriched_citation(citation: Citation, source_metadata: dict) -> Citat
     # Build a descriptive source string
     file_name = source_metadata.get("file_name", "Unknown")
     device_name = source_metadata.get("device_name", "")
-
-    if device_name:
-        source = f"{file_name} - {device_name}"
-    else:
-        source = file_name
+    source = f"{file_name} - {device_name}" if device_name else file_name
 
     return Citation(
         source=source,

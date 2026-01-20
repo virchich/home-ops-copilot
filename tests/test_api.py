@@ -212,14 +212,24 @@ class TestAskEndpointIntegration:
         # If the gas question is HIGH risk, verify professional recommendation
         if high_risk_data["risk_level"] == "HIGH":
             answer_lower = high_risk_data["answer"].lower()
-            professional_terms = ["professional", "technician", "licensed", "hvac", "qualified", "expert", "call"]
+            professional_terms = [
+                "professional",
+                "technician",
+                "licensed",
+                "hvac",
+                "qualified",
+                "expert",
+                "call",
+            ]
             has_professional_mention = any(term in answer_lower for term in professional_terms)
             # This is a soft assertion - log warning instead of failing
             if not has_professional_mention:
                 import warnings
+
                 warnings.warn(
                     "HIGH risk answer did not mention professional - "
-                    "consider adjusting system prompt"
+                    "consider adjusting system prompt",
+                    stacklevel=2,
                 )
 
     def test_ask_returns_fallback_for_out_of_scope_question(self, client: TestClient) -> None:

@@ -16,7 +16,6 @@ Key Concepts:
 
 import json
 import logging
-from pathlib import Path
 from typing import cast
 
 from llama_index.core import (
@@ -30,6 +29,7 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from app.core.config import settings
+from app.rag.extractors import extract_text_from_pdf
 from app.rag.schema import DocumentMetadata, MetadataFile
 
 # =============================================================================
@@ -157,59 +157,6 @@ def load_documents(metadata_dict: dict[str, DocumentMetadata]) -> list[Document]
 
     logger.info(f"Successfully loaded {len(documents)} documents")
     return documents
-
-
-def extract_text_from_pdf(pdf_path: Path) -> str:
-    """
-    Extract text from a PDF file.
-
-    Tries pypdf first (faster), falls back to pdfplumber (more robust)
-    if pypdf fails due to font encoding or other issues.
-
-    Args:
-        pdf_path: Path to the PDF file
-
-    Returns:
-        Extracted text as a single string
-    """
-    # Try pypdf first - it's faster for simple PDFs
-    try:
-        return _extract_with_pypdf(pdf_path)
-    except Exception as e:
-        logger.warning(f"pypdf failed for {pdf_path.name}: {e}, trying pdfplumber...")
-
-    # Fall back to pdfplumber - handles complex fonts better
-    return _extract_with_pdfplumber(pdf_path)
-
-
-def _extract_with_pypdf(pdf_path: Path) -> str:
-    """Extract text using pypdf."""
-    from pypdf import PdfReader
-
-    reader = PdfReader(pdf_path)
-    text_parts = []
-
-    for page_num, page in enumerate(reader.pages, start=1):
-        page_text = page.extract_text()
-        if page_text:
-            text_parts.append(f"\n[Page {page_num}]\n{page_text}")
-
-    return "\n".join(text_parts)
-
-
-def _extract_with_pdfplumber(pdf_path: Path) -> str:
-    """Extract text using pdfplumber (more robust for complex PDFs)."""
-    import pdfplumber
-
-    text_parts = []
-
-    with pdfplumber.open(pdf_path) as pdf:
-        for page_num, page in enumerate(pdf.pages, start=1):
-            page_text = page.extract_text()
-            if page_text:
-                text_parts.append(f"\n[Page {page_num}]\n{page_text}")
-
-    return "\n".join(text_parts)
 
 
 # =============================================================================

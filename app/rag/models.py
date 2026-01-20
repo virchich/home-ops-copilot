@@ -12,7 +12,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 # =============================================================================
 # ENUMS
 # =============================================================================
@@ -75,9 +74,7 @@ class LLMResponse(BaseModel):
         description="Risk assessment for the task. "
         "LOW = safe DIY, MED = some caution needed, HIGH = professional required"
     )
-    reasoning: str = Field(
-        description="Brief explanation of why this risk level was assigned"
-    )
+    reasoning: str = Field(description="Brief explanation of why this risk level was assigned")
     citations: list[Citation] = Field(
         default_factory=list,
         description="Citations to source documents that support the answer. "

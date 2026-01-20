@@ -85,17 +85,14 @@ def get_index() -> VectorStoreIndex:
         if not isinstance(index, VectorStoreIndex):
             raise RuntimeError(f"Expected VectorStoreIndex, got {type(index)}")
 
-        logger.info(
-            f"Index loaded successfully. "
-            f"Contains {len(index.docstore.docs)} chunks."
-        )
+        logger.info(f"Index loaded successfully. Contains {len(index.docstore.docs)} chunks.")
         return index
 
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         raise FileNotFoundError(
             f"Index not found at {settings.paths.index_dir}. "
             "Run 'make ingest' to build the index first."
-        )
+        ) from e
     except Exception as e:
         raise RuntimeError(f"Failed to load index: {e}") from e
 
@@ -156,8 +153,7 @@ def retrieve(question: str, top_k: int | None = None) -> list[NodeWithScore]:
     if results:
         scores = [r.score for r in results]
         logger.info(
-            f"Retrieved {len(results)} chunks. "
-            f"Scores: max={max(scores):.3f}, min={min(scores):.3f}"
+            f"Retrieved {len(results)} chunks. Scores: max={max(scores):.3f}, min={min(scores):.3f}"
         )
     else:
         logger.warning("No chunks retrieved!")
@@ -192,10 +188,7 @@ def format_contexts_for_llm(nodes: list[NodeWithScore]) -> str:
         source = metadata.get("file_name", "Unknown")
         device = metadata.get("device_name", "Unknown device")
 
-        contexts.append(
-            f"[Source {i}: {source} - {device}]\n"
-            f"{node.node.text}\n"
-        )
+        contexts.append(f"[Source {i}: {source} - {device}]\n{node.node.text}\n")
 
     return "\n---\n".join(contexts)
 
