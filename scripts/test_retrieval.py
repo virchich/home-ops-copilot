@@ -39,7 +39,7 @@ def test_query(question: str) -> None:
         print(f"  Source:   {metadata['file_name']}")
         print(f"  Device:   {metadata['device_name']}")
         print(f"  Type:     {metadata['device_type']}")
-        print(f"  Text preview: {result.node.text[:200]}...")
+        print(f"  Text preview: {result.node.get_content()[:200]}...")
         print()
 
     # Also show formatted context for LLM

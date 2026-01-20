@@ -22,7 +22,7 @@ from app.rag.extractors import (
 # =============================================================================
 
 
-def create_mock_pypdf_reader(pages: list[str]) -> MagicMock:
+def create_mock_pypdf_reader(pages: list[str | None]) -> MagicMock:
     """Create a mock PdfReader with the given page texts."""
     mock_reader = MagicMock()
     mock_pages = []

@@ -294,7 +294,7 @@ def compute_ragas_metrics(results: list[EvalResult]) -> dict | None:
         # Ragas expects OPENAI_API_KEY in environment
         # Set it temporarily for the evaluation
         os.environ["OPENAI_API_KEY"] = settings.openai_api_key
-        os.environ["OPENAI_MODEL_NAME"] = settings.openai_model
+        os.environ["OPENAI_MODEL_NAME"] = settings.llm.model
 
         # Initialize metrics (they will use env vars for LLM config)
         faithfulness = Faithfulness()

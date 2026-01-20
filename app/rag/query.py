@@ -198,7 +198,9 @@ def _has_sufficient_evidence(nodes: list) -> bool:
 
     # Check if the best match meets the minimum relevance threshold
     top_score = nodes[0].score
-    return top_score >= settings.rag.min_relevance_score
+    if top_score is None:
+        return False
+    return bool(top_score >= settings.rag.min_relevance_score)
 
 
 def query(question: str) -> QueryResponse:
@@ -235,7 +237,7 @@ def query(question: str) -> QueryResponse:
 
     # Extract contexts for response
     context = format_contexts_for_llm(retrieved_nodes)
-    contexts = [node.node.text for node in retrieved_nodes]
+    contexts = [node.node.get_content() for node in retrieved_nodes]
 
     # Build source mapping for citation validation
     source_mapping = build_source_mapping(retrieved_nodes)

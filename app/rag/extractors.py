@@ -10,36 +10,19 @@ Future formats can be added by implementing new extract_text_from_* functions.
 """
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# EXTRACTOR PROTOCOL
+# TYPE ALIAS
 # =============================================================================
-# Define the interface for extractors to enable type checking and future
-# polymorphism (e.g., factory pattern for different file types).
+# Define the type for extractor functions.
+# Each extractor takes a Path and returns extracted text as a string.
 
-
-class TextExtractor(Protocol):
-    """Protocol for text extraction functions."""
-
-    def __call__(self, file_path: Path) -> str:
-        """Extract text from a file.
-
-        Args:
-            file_path: Path to the file to extract text from.
-
-        Returns:
-            Extracted text as a single string.
-
-        Raises:
-            FileNotFoundError: If the file doesn't exist.
-            ValueError: If the file format is unsupported or extraction fails.
-        """
-        ...
+TextExtractor = Callable[[Path], str]
 
 
 # =============================================================================
