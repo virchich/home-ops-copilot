@@ -16,6 +16,7 @@ How Retrieval Works:
 """
 
 import logging
+from collections.abc import Sequence
 from functools import lru_cache
 
 from llama_index.core import Settings, StorageContext, load_index_from_storage
@@ -151,10 +152,11 @@ def retrieve(question: str, top_k: int | None = None) -> list[NodeWithScore]:
 
     # Log some info for debugging
     if results:
-        scores = [r.score for r in results]
-        logger.info(
-            f"Retrieved {len(results)} chunks. Scores: max={max(scores):.3f}, min={min(scores):.3f}"
-        )
+        scores = [r.score for r in results if r.score is not None]
+        if scores:
+            logger.info(
+                f"Retrieved {len(results)} chunks. Scores: max={max(scores):.3f}, min={min(scores):.3f}"
+            )
     else:
         logger.warning("No chunks retrieved!")
 
@@ -166,7 +168,7 @@ def retrieve(question: str, top_k: int | None = None) -> list[NodeWithScore]:
 # =============================================================================
 
 
-def format_contexts_for_llm(nodes: list[NodeWithScore]) -> str:
+def format_contexts_for_llm(nodes: Sequence[NodeWithScore]) -> str:
     """
     Format retrieved nodes as context for the LLM.
 
@@ -188,7 +190,7 @@ def format_contexts_for_llm(nodes: list[NodeWithScore]) -> str:
         source = metadata.get("file_name", "Unknown")
         device = metadata.get("device_name", "Unknown device")
 
-        contexts.append(f"[Source {i}: {source} - {device}]\n{node.node.text}\n")
+        contexts.append(f"[Source {i}: {source} - {device}]\n{node.node.get_content()}\n")
 
     return "\n---\n".join(contexts)
 
@@ -213,7 +215,7 @@ def get_node_metadata(node: NodeWithScore) -> dict:
     }
 
 
-def build_source_mapping(nodes: list[NodeWithScore]) -> dict[int, dict]:
+def build_source_mapping(nodes: Sequence[NodeWithScore]) -> dict[int, dict]:
     """
     Build a mapping from source index to node metadata.
 

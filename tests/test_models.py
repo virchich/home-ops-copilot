@@ -87,8 +87,12 @@ class TestLLMResponse:
 
     def test_llm_response_validates_risk_level(self) -> None:
         """Should only accept valid risk level literals."""
+        from typing import Literal, get_args
+
+        RiskLevelLiteral = Literal["LOW", "MED", "HIGH"]
+
         # Valid values work
-        for level in ["LOW", "MED", "HIGH"]:
+        for level in get_args(RiskLevelLiteral):
             response = LLMResponse(
                 answer="Test",
                 risk_level=level,
@@ -96,12 +100,10 @@ class TestLLMResponse:
             )
             assert response.risk_level == level
 
-        # Invalid value raises
+        # Invalid value raises - use model_validate to test validation
         with pytest.raises(ValueError):
-            LLMResponse(
-                answer="Test",
-                risk_level="INVALID",
-                reasoning="Test",
+            LLMResponse.model_validate(
+                {"answer": "Test", "risk_level": "INVALID", "reasoning": "Test"}
             )
 
 

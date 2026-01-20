@@ -31,7 +31,7 @@ def create_mock_node(
 ) -> MagicMock:
     """Create a mock NodeWithScore for testing."""
     mock_node = MagicMock()
-    mock_node.node.text = text
+    mock_node.node.get_content.return_value = text
     mock_node.node.metadata = {
         "file_name": file_name,
         "device_type": device_type,
@@ -98,7 +98,7 @@ class TestFormatContextsForLLM:
     def test_handles_missing_metadata_gracefully(self) -> None:
         """Should use 'Unknown' for missing metadata fields."""
         mock_node = MagicMock()
-        mock_node.node.text = "Some text"
+        mock_node.node.get_content.return_value = "Some text"
         mock_node.node.metadata = {}  # Empty metadata
         mock_node.score = 0.5
 
@@ -328,6 +328,7 @@ class TestRetrieverIntegration:
         results = retrieve("water heater temperature")
 
         for result in results:
+            assert result.score is not None, "Score should not be None"
             assert 0 <= result.score <= 1
 
     def test_retrieve_results_sorted_by_relevance(self) -> None:
@@ -336,7 +337,8 @@ class TestRetrieverIntegration:
 
         results = retrieve("HRV cleaning")
 
-        scores = [r.score for r in results]
+        scores = [r.score for r in results if r.score is not None]
+        assert len(scores) == len(results), "All scores should be present"
         assert scores == sorted(scores, reverse=True)
 
     def test_retrieve_results_have_metadata(self) -> None:
