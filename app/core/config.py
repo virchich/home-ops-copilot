@@ -81,6 +81,22 @@ class RAGSettings(BaseModel):
         le=1.0,
     )
 
+    # Reranking (Week 4)
+    rerank_enabled: bool = Field(
+        default=False,
+        description="Enable cross-encoder reranking (experimental - may reduce quality on technical docs)",
+    )
+    rerank_model: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L-6-v2",
+        description="Cross-encoder model for reranking (speed vs accuracy tradeoff)",
+    )
+    rerank_top_n: int = Field(
+        default=5,
+        description="Number of results to return after reranking",
+        ge=1,
+        le=20,
+    )
+
     # Embedding
     embedding_model: str = Field(
         default="text-embedding-3-small",
