@@ -28,8 +28,9 @@ from functools import lru_cache
 
 from llama_index.core import Settings, StorageContext, load_index_from_storage
 from llama_index.core.indices.vector_store import VectorStoreIndex
+from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.schema import NodeWithScore
+from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.core.vector_stores import (
     FilterCondition,
     FilterOperator,
@@ -109,6 +110,72 @@ def get_index() -> VectorStoreIndex:
         ) from e
     except Exception as e:
         raise RuntimeError(f"Failed to load index: {e}") from e
+
+
+# =============================================================================
+# RERANKER (Week 4)
+# =============================================================================
+# Cross-encoder reranking improves precision by re-scoring retrieved chunks
+# based on their relevance to the query. This is more accurate than
+# bi-encoder similarity but slower, so we use it as a second pass.
+
+
+@lru_cache(maxsize=1)
+def get_reranker() -> SentenceTransformerRerank | None:
+    """
+    Get a cached reranker instance.
+
+    Returns None if reranking is disabled in settings.
+    The reranker is loaded once and cached for efficiency.
+
+    Returns:
+        SentenceTransformerRerank if enabled, None otherwise.
+    """
+    if not settings.rag.rerank_enabled:
+        logger.info("Reranking is disabled")
+        return None
+
+    logger.info(f"Loading reranker model: {settings.rag.rerank_model}")
+    reranker = SentenceTransformerRerank(
+        model=settings.rag.rerank_model,
+        top_n=settings.rag.rerank_top_n,
+    )
+    logger.info("Reranker loaded successfully")
+    return reranker
+
+
+def rerank_nodes(
+    nodes: list[NodeWithScore],
+    question: str,
+) -> list[NodeWithScore]:
+    """
+    Rerank retrieved nodes using a cross-encoder model.
+
+    Cross-encoders jointly encode the query and document, providing
+    more accurate relevance scores than bi-encoder similarity.
+
+    Args:
+        nodes: Retrieved nodes with initial similarity scores
+        question: The user's question
+
+    Returns:
+        Reranked nodes, limited to top_n most relevant
+    """
+    reranker = get_reranker()
+    if reranker is None or not nodes:
+        return nodes
+
+    # Create a QueryBundle for the reranker
+    query_bundle = QueryBundle(query_str=question)
+
+    # Rerank
+    reranked = reranker.postprocess_nodes(nodes, query_bundle)
+
+    logger.info(
+        f"Reranked {len(nodes)} nodes to {len(reranked)} (top_n={settings.rag.rerank_top_n})"
+    )
+
+    return reranked
 
 
 # =============================================================================
@@ -226,10 +293,12 @@ def retrieve(
     This is the core retrieval function. It:
     1. Loads the index (cached after first call)
     2. Detects device types from the question (if auto_filter=True)
-    3. Creates a retriever with metadata filters and specified top_k
-    4. Embeds your question and finds similar chunks
-    5. Falls back to unfiltered search if filtered results have low scores
-    6. Returns chunks sorted by relevance (highest score first)
+    3. Creates a retriever with metadata filters
+    4. Over-fetches candidates for reranking (if enabled)
+    5. Embeds your question and finds similar chunks
+    6. Falls back to unfiltered search if filtered results have low scores
+    7. Reranks results with cross-encoder (if enabled)
+    8. Returns chunks sorted by relevance (highest score first)
 
     Args:
         question: The user's question
@@ -256,6 +325,10 @@ def retrieve(
     # Get the cached index
     index = get_index()
 
+    # Over-fetch candidates when reranking is enabled
+    # Reranking works best with more candidates to choose from
+    fetch_k = top_k * 3 if settings.rag.rerank_enabled else top_k
+
     # Detect device types and build metadata filters
     metadata_filters = None
     device_types: list[str] = []
@@ -268,7 +341,7 @@ def retrieve(
     # Create a retriever with optional metadata filters
     retriever = VectorIndexRetriever(
         index=index,
-        similarity_top_k=top_k,
+        similarity_top_k=fetch_k,  # Over-fetch for reranking
         filters=metadata_filters,
     )
 
@@ -284,10 +357,13 @@ def retrieve(
         )
         unfiltered_retriever = VectorIndexRetriever(
             index=index,
-            similarity_top_k=top_k,
+            similarity_top_k=fetch_k,  # Over-fetch for reranking
             filters=None,
         )
         results = unfiltered_retriever.retrieve(question)
+
+    # Rerank results with cross-encoder (if enabled)
+    results = rerank_nodes(results, question)
 
     # Log retrieval results
     _log_retrieval_results(results)

@@ -192,14 +192,29 @@ def _has_sufficient_evidence(nodes: list) -> bool:
 
     Returns:
         True if there's sufficient evidence, False otherwise.
+
+    Note:
+        Score interpretation depends on whether reranking is enabled:
+        - Bi-encoder (no reranking): scores are 0-1, use min_relevance_score threshold
+        - Cross-encoder (reranking): scores are logits (-10 to +10)
+          - > 0: clearly relevant
+          - -2 to 0: partially relevant (may contain useful info)
+          - < -2: likely irrelevant
     """
     if not nodes:
         return False
 
-    # Check if the best match meets the minimum relevance threshold
     top_score = nodes[0].score
     if top_score is None:
         return False
+
+    # Cross-encoder scores are logits
+    # Use -2 as threshold: allows partially relevant content through
+    # while filtering truly irrelevant content (scores < -2)
+    if settings.rag.rerank_enabled:
+        return bool(top_score > -2)
+
+    # Bi-encoder scores are 0-1, use configured threshold
     return bool(top_score >= settings.rag.min_relevance_score)
 
 

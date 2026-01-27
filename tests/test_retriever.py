@@ -226,21 +226,25 @@ class TestRetrieveDefaults:
         with (
             patch("app.rag.retriever.get_index") as mock_get_index,
             patch("app.rag.retriever.VectorIndexRetriever") as mock_retriever_class,
+            patch("app.rag.retriever.rerank_nodes") as mock_rerank,
             patch("app.rag.retriever.settings") as mock_settings,
         ):
             # Setup mocks
             mock_settings.rag.top_k = 7
+            mock_settings.rag.rerank_enabled = False  # Disable reranking for this test
             mock_index = MagicMock()
             mock_get_index.return_value = mock_index
             mock_retriever = MagicMock()
             mock_retriever.retrieve.return_value = []
             mock_retriever_class.return_value = mock_retriever
+            mock_rerank.return_value = []  # Pass through
 
             # Call without top_k
             retrieve("test question")
 
             # Verify retriever was created with settings value
             # filters=None because "test question" doesn't match any device keywords
+            # When rerank is disabled, similarity_top_k equals top_k (no over-fetch)
             mock_retriever_class.assert_called_once_with(
                 index=mock_index,
                 similarity_top_k=7,
@@ -252,21 +256,25 @@ class TestRetrieveDefaults:
         with (
             patch("app.rag.retriever.get_index") as mock_get_index,
             patch("app.rag.retriever.VectorIndexRetriever") as mock_retriever_class,
+            patch("app.rag.retriever.rerank_nodes") as mock_rerank,
             patch("app.rag.retriever.settings") as mock_settings,
         ):
             # Setup mocks
             mock_settings.rag.top_k = 5  # Default
+            mock_settings.rag.rerank_enabled = False  # Disable reranking for this test
             mock_index = MagicMock()
             mock_get_index.return_value = mock_index
             mock_retriever = MagicMock()
             mock_retriever.retrieve.return_value = []
             mock_retriever_class.return_value = mock_retriever
+            mock_rerank.return_value = []  # Pass through
 
             # Call with explicit top_k
             retrieve("test question", top_k=10)
 
             # Verify retriever was created with explicit value
             # filters=None because "test question" doesn't match any device keywords
+            # When rerank is disabled, similarity_top_k equals top_k (no over-fetch)
             mock_retriever_class.assert_called_once_with(
                 index=mock_index,
                 similarity_top_k=10,
@@ -455,22 +463,41 @@ class TestRetrieverIntegration:
             assert hasattr(result.node, "metadata")
 
     def test_retrieve_respects_top_k(self) -> None:
-        """Should return exactly top_k results."""
+        """Should return at most the configured number of results.
+
+        Note: When reranking is enabled, returns rerank_top_n results.
+        When disabled, returns exactly top_k results.
+        """
+        from app.core.config import settings
+
         get_index.cache_clear()
 
         results = retrieve("furnace maintenance", top_k=3)
 
-        assert len(results) == 3
+        # When reranking is enabled, we return rerank_top_n (default: 5)
+        # When disabled, we return top_k (3)
+        if settings.rag.rerank_enabled:
+            assert len(results) == settings.rag.rerank_top_n
+        else:
+            assert len(results) == 3
 
     def test_retrieve_results_have_scores(self) -> None:
-        """Results should have similarity scores between 0 and 1."""
+        """Results should have valid relevance scores.
+
+        Note: Score range depends on whether reranking is enabled:
+        - Bi-encoder: scores are 0-1 (cosine similarity)
+        - Cross-encoder: scores are logits (typically -10 to +10)
+        """
+        import numpy as np
+
         get_index.cache_clear()
 
         results = retrieve("water heater temperature")
 
         for result in results:
             assert result.score is not None, "Score should not be None"
-            assert 0 <= result.score <= 1
+            # Just verify scores are numeric (may be numpy types)
+            assert isinstance(result.score, (int, float, np.floating))
 
     def test_retrieve_results_sorted_by_relevance(self) -> None:
         """Results should be sorted by score (highest first)."""

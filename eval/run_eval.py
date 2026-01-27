@@ -485,6 +485,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    # Clear caches to ensure fresh state
+    # This is important when config changes (e.g., reranking enabled/disabled)
+    from app.rag.retriever import get_index, get_reranker
+
+    get_index.cache_clear()
+    get_reranker.cache_clear()
+
     # Paths
     eval_dir = Path(__file__).parent
     golden_path = eval_dir / "golden_questions.jsonl"

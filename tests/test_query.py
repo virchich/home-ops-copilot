@@ -340,32 +340,35 @@ class TestHasSufficientEvidence:
         """Should return False when no nodes retrieved."""
         assert _has_sufficient_evidence([]) is False
 
-    def test_returns_false_for_low_score(self) -> None:
-        """Should return False when top score is below threshold."""
+    def test_returns_false_for_low_score_bi_encoder(self) -> None:
+        """Should return False when top score is below threshold (bi-encoder)."""
         nodes = [create_mock_node("text", 0.1)]  # Very low score
 
         with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.rerank_enabled = False
             mock_settings.rag.min_relevance_score = 0.3
             assert _has_sufficient_evidence(nodes) is False
 
-    def test_returns_true_for_high_score(self) -> None:
-        """Should return True when top score meets threshold."""
+    def test_returns_true_for_high_score_bi_encoder(self) -> None:
+        """Should return True when top score meets threshold (bi-encoder)."""
         nodes = [create_mock_node("text", 0.8)]  # High score
 
         with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.rerank_enabled = False
             mock_settings.rag.min_relevance_score = 0.3
             assert _has_sufficient_evidence(nodes) is True
 
-    def test_returns_true_for_exact_threshold(self) -> None:
-        """Should return True when top score equals threshold."""
+    def test_returns_true_for_exact_threshold_bi_encoder(self) -> None:
+        """Should return True when top score equals threshold (bi-encoder)."""
         nodes = [create_mock_node("text", 0.5)]
 
         with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.rerank_enabled = False
             mock_settings.rag.min_relevance_score = 0.5
             assert _has_sufficient_evidence(nodes) is True
 
-    def test_uses_first_node_score(self) -> None:
-        """Should check the first (highest) node's score."""
+    def test_uses_first_node_score_bi_encoder(self) -> None:
+        """Should check the first (highest) node's score (bi-encoder)."""
         nodes = [
             create_mock_node("best match", 0.9),
             create_mock_node("second best", 0.5),
@@ -373,8 +376,25 @@ class TestHasSufficientEvidence:
         ]
 
         with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.rerank_enabled = False
             mock_settings.rag.min_relevance_score = 0.7
             # Should pass because first node (0.9) exceeds threshold
+            assert _has_sufficient_evidence(nodes) is True
+
+    def test_returns_false_for_negative_score_cross_encoder(self) -> None:
+        """Should return False when top score is negative (cross-encoder logits)."""
+        nodes = [create_mock_node("text", -2.5)]  # Negative = not relevant
+
+        with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.rerank_enabled = True
+            assert _has_sufficient_evidence(nodes) is False
+
+    def test_returns_true_for_positive_score_cross_encoder(self) -> None:
+        """Should return True when top score is positive (cross-encoder logits)."""
+        nodes = [create_mock_node("text", 3.5)]  # Positive = relevant
+
+        with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.rerank_enabled = True
             assert _has_sufficient_evidence(nodes) is True
 
 
@@ -393,12 +413,13 @@ class TestQueryInsufficientEvidence:
         assert result.contexts == []
 
     def test_returns_fallback_for_low_relevance(self, mock_rag_pipeline: dict[str, Any]) -> None:
-        """Should return fallback when top score is below threshold."""
+        """Should return fallback when top score is below threshold (bi-encoder)."""
         # Mock low-scoring nodes
         low_score_nodes = [create_mock_node("irrelevant text", 0.1)]
         mock_rag_pipeline["retrieve"].return_value = low_score_nodes
 
         with patch("app.rag.query.settings") as mock_settings:
+            mock_settings.rag.rerank_enabled = False
             mock_settings.rag.min_relevance_score = 0.3
 
             result = query("Random unrelated question")
