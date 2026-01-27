@@ -8,11 +8,18 @@ Key Concepts:
 - VectorStoreIndex: The searchable collection of document chunks + embeddings
 - VectorIndexRetriever: Finds similar chunks using cosine similarity
 - NodeWithScore: A chunk (node) paired with its similarity score
+- MetadataFilters: Filter chunks by metadata before similarity search
 
 How Retrieval Works:
 1. Your question gets embedded (converted to a vector)
-2. We compare that vector to all chunk vectors in the index
-3. Return the top-k most similar chunks (highest cosine similarity)
+2. (Optional) Filter chunks by metadata (e.g., device_type)
+3. Compare that vector to filtered chunk vectors in the index
+4. Return the top-k most similar chunks (highest cosine similarity)
+
+Week 4 Enhancement: Metadata Filtering
+- Detects device types from the question (e.g., "furnace filter" → furnace)
+- Filters retrieval to only relevant document subsets
+- Falls back to unfiltered search if no device detected
 """
 
 import logging
@@ -23,6 +30,12 @@ from llama_index.core import Settings, StorageContext, load_index_from_storage
 from llama_index.core.indices.vector_store import VectorStoreIndex
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.schema import NodeWithScore
+from llama_index.core.vector_stores import (
+    FilterCondition,
+    FilterOperator,
+    MetadataFilter,
+    MetadataFilters,
+)
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from app.core.config import settings
@@ -99,23 +112,130 @@ def get_index() -> VectorStoreIndex:
 
 
 # =============================================================================
+# DEVICE TYPE DETECTION
+# =============================================================================
+
+# Mapping of keywords to device types
+# Keys are device_type values from metadata.json, values are trigger keywords
+# NOTE: Some keywords (e.g., humidity, condensation) appear in multiple device lists
+# because multiple devices can address those issues.
+DEVICE_KEYWORDS: dict[str, list[str]] = {
+    "furnace": ["furnace", "heating system", "gas furnace", "filter size", "merv"],
+    "thermostat": ["thermostat", "ecobee", "temperature setting", "schedule", "smart thermostat"],
+    # HRV affects air quality, moisture, and condensation
+    # NOTE: "humidity" included because HRV helps control indoor humidity
+    "hrv": [
+        "hrv",
+        "ventilator",
+        "ventilation",
+        "air exchanger",
+        "heat recovery",
+        "condensation",
+        "windows fog",
+        "fresh air",
+        "humidity",  # HRV controls humidity via ventilation
+    ],
+    # Humidifier affects indoor humidity levels
+    # NOTE: "humidity" included because humidifier directly sets humidity
+    "humidifier": ["humidifier", "humidistat", "dry air", "humidity"],
+    "water_heater": ["water heater", "hot water", "tank temperature", "hot water tank"],
+    "water_softener": ["water softener", "softener", "salt", "hard water", "regeneration"],
+    "energy_meter": ["energy meter", "power meter", "electricity usage", "power consumption"],
+}
+
+
+def detect_device_types(question: str) -> list[str]:
+    """
+    Detect device types mentioned in a question.
+
+    Uses keyword matching to identify which device(s) the question is about.
+    This enables metadata filtering to retrieve only relevant documents.
+
+    Args:
+        question: The user's question
+
+    Returns:
+        List of device_type values (e.g., ["furnace", "humidifier"]).
+        Empty list if no specific device detected.
+
+    Examples:
+        >>> detect_device_types("How do I change my furnace filter?")
+        ['furnace']
+        >>> detect_device_types("What humidity level should I set?")
+        ['humidifier', 'hrv']  # Both relate to humidity
+        >>> detect_device_types("How do I save energy?")
+        []  # Too general, no specific device
+    """
+    question_lower = question.lower()
+    detected = []
+
+    for device_type, keywords in DEVICE_KEYWORDS.items():
+        if any(keyword in question_lower for keyword in keywords):
+            detected.append(device_type)
+
+    logger.debug(f"Detected device types: {detected} for question: {question[:50]}...")
+    return detected
+
+
+def build_metadata_filters(device_types: list[str]) -> MetadataFilters | None:
+    """
+    Build LlamaIndex metadata filters from detected device types.
+
+    Creates an OR filter that matches any of the detected device types.
+    This allows retrieval to search across multiple relevant document sets.
+
+    Args:
+        device_types: List of device_type values to filter by
+
+    Returns:
+        MetadataFilters object for LlamaIndex, or None if no filters needed.
+    """
+    if not device_types:
+        return None
+
+    # Create OR filter: match ANY of the detected device types
+    # Type annotation needed due to list invariance (mypy)
+    filters: list[MetadataFilter | MetadataFilters] = [
+        MetadataFilter(
+            key="device_type",
+            value=device_type,
+            operator=FilterOperator.EQ,
+        )
+        for device_type in device_types
+    ]
+
+    return MetadataFilters(
+        filters=filters,
+        condition=FilterCondition.OR,
+    )
+
+
+# =============================================================================
 # RETRIEVAL
 # =============================================================================
 
 
-def retrieve(question: str, top_k: int | None = None) -> list[NodeWithScore]:
+def retrieve(
+    question: str,
+    top_k: int | None = None,
+    auto_filter: bool = True,
+) -> list[NodeWithScore]:
     """
     Retrieve the most relevant chunks for a question.
 
     This is the core retrieval function. It:
     1. Loads the index (cached after first call)
-    2. Creates a retriever with the specified top_k
-    3. Embeds your question and finds similar chunks
-    4. Returns chunks sorted by relevance (highest score first)
+    2. Detects device types from the question (if auto_filter=True)
+    3. Creates a retriever with metadata filters and specified top_k
+    4. Embeds your question and finds similar chunks
+    5. Falls back to unfiltered search if filtered results have low scores
+    6. Returns chunks sorted by relevance (highest score first)
 
     Args:
         question: The user's question
         top_k: Number of chunks to retrieve (default from settings.rag.top_k)
+        auto_filter: If True, automatically detect device types and filter.
+            Set to False to search all documents regardless of question content.
 
     Returns:
         List of NodeWithScore objects, each containing:
@@ -136,31 +256,83 @@ def retrieve(question: str, top_k: int | None = None) -> list[NodeWithScore]:
     # Get the cached index
     index = get_index()
 
-    # Create a retriever
-    # VectorIndexRetriever is the basic retriever that uses cosine similarity
+    # Detect device types and build metadata filters
+    metadata_filters = None
+    device_types: list[str] = []
+    if auto_filter:
+        device_types = detect_device_types(question)
+        metadata_filters = build_metadata_filters(device_types)
+        if metadata_filters:
+            logger.info(f"Filtering by device types: {device_types}")
+
+    # Create a retriever with optional metadata filters
     retriever = VectorIndexRetriever(
         index=index,
         similarity_top_k=top_k,
+        filters=metadata_filters,
     )
 
-    # Retrieve!
-    # Under the hood, this:
-    # 1. Embeds the question using text-embedding-3-small
-    # 2. Computes cosine similarity with all chunk vectors
-    # 3. Returns top_k chunks sorted by similarity
+    # Retrieve with filters
     results = retriever.retrieve(question)
 
-    # Log some info for debugging
+    # Hybrid fallback: If filtered results have low scores, try unfiltered
+    # This handles cases where the device detection was too narrow
+    if metadata_filters and _should_fallback_to_unfiltered(results):
+        logger.info(
+            f"Filtered results have low scores (top={_get_top_score(results):.3f}). "
+            "Falling back to unfiltered search."
+        )
+        unfiltered_retriever = VectorIndexRetriever(
+            index=index,
+            similarity_top_k=top_k,
+            filters=None,
+        )
+        results = unfiltered_retriever.retrieve(question)
+
+    # Log retrieval results
+    _log_retrieval_results(results)
+
+    return results
+
+
+def _get_top_score(results: list[NodeWithScore]) -> float:
+    """Get the top score from results, or 0.0 if empty."""
+    if not results:
+        return 0.0
+    top_score = results[0].score
+    return top_score if top_score is not None else 0.0
+
+
+def _should_fallback_to_unfiltered(results: list[NodeWithScore]) -> bool:
+    """
+    Determine if we should fall back to unfiltered search.
+
+    Falls back if:
+    - No results were returned, OR
+    - Top result score is below the minimum relevance threshold
+
+    This ensures that overly aggressive filtering doesn't hurt retrieval quality.
+    """
+    if not results:
+        return True
+
+    top_score = _get_top_score(results)
+    # Use the same threshold as the "insufficient evidence" check
+    return top_score < settings.rag.min_relevance_score
+
+
+def _log_retrieval_results(results: list[NodeWithScore]) -> None:
+    """Log information about retrieval results for debugging."""
     if results:
         scores = [r.score for r in results if r.score is not None]
         if scores:
+            sources = {r.node.metadata.get("device_type", "unknown") for r in results}
             logger.info(
-                f"Retrieved {len(results)} chunks. Scores: max={max(scores):.3f}, min={min(scores):.3f}"
+                f"Retrieved {len(results)} chunks from {sources}. "
+                f"Scores: max={max(scores):.3f}, min={min(scores):.3f}"
             )
     else:
         logger.warning("No chunks retrieved!")
-
-    return results
 
 
 # =============================================================================

@@ -9,7 +9,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.rag.retriever import (
+    _get_top_score,
+    _should_fallback_to_unfiltered,
+    build_metadata_filters,
     build_source_mapping,
+    detect_device_types,
     format_contexts_for_llm,
     get_index,
     get_node_metadata,
@@ -236,9 +240,11 @@ class TestRetrieveDefaults:
             retrieve("test question")
 
             # Verify retriever was created with settings value
+            # filters=None because "test question" doesn't match any device keywords
             mock_retriever_class.assert_called_once_with(
                 index=mock_index,
                 similarity_top_k=7,
+                filters=None,
             )
 
     def test_uses_explicit_top_k_when_provided(self) -> None:
@@ -260,10 +266,145 @@ class TestRetrieveDefaults:
             retrieve("test question", top_k=10)
 
             # Verify retriever was created with explicit value
+            # filters=None because "test question" doesn't match any device keywords
             mock_retriever_class.assert_called_once_with(
                 index=mock_index,
                 similarity_top_k=10,
+                filters=None,
             )
+
+
+# =============================================================================
+# DEVICE TYPE DETECTION TESTS
+# =============================================================================
+
+
+class TestDetectDeviceTypes:
+    """Tests for detect_device_types() function."""
+
+    def test_detects_furnace_keywords(self) -> None:
+        """Should detect furnace from various keywords."""
+        assert "furnace" in detect_device_types("How do I change my furnace filter?")
+        assert "furnace" in detect_device_types("What MERV rating should I use?")
+        assert "furnace" in detect_device_types("My heating system isn't working")
+
+    def test_detects_hrv_keywords(self) -> None:
+        """Should detect HRV from various keywords."""
+        assert "hrv" in detect_device_types("How do I use my HRV?")
+        assert "hrv" in detect_device_types("Ventilation settings in winter")
+        assert "hrv" in detect_device_types("Heat recovery ventilator maintenance")
+
+    def test_detects_humidifier_keywords(self) -> None:
+        """Should detect humidifier from various keywords."""
+        assert "humidifier" in detect_device_types("What humidity level should I set?")
+        assert "humidifier" in detect_device_types("My humidifier is not working")
+        assert "humidifier" in detect_device_types("Dry air in winter")
+
+    def test_detects_water_heater_keywords(self) -> None:
+        """Should detect water heater from various keywords."""
+        assert "water_heater" in detect_device_types("Hot water tank temperature")
+        assert "water_heater" in detect_device_types("My water heater is making noise")
+
+    def test_detects_water_softener_keywords(self) -> None:
+        """Should detect water softener from various keywords."""
+        assert "water_softener" in detect_device_types("How much salt for softener?")
+        assert "water_softener" in detect_device_types("Hard water problems")
+
+    def test_detects_multiple_devices(self) -> None:
+        """Should detect multiple device types when question is ambiguous."""
+        # Humidity relates to both humidifier and HRV
+        result = detect_device_types("What humidity level for HRV?")
+        assert "hrv" in result
+        assert "humidifier" in result
+
+    def test_returns_empty_for_generic_question(self) -> None:
+        """Should return empty list when no device keywords match."""
+        assert detect_device_types("How do I save money?") == []
+        assert detect_device_types("General home maintenance tips") == []
+
+    def test_case_insensitive(self) -> None:
+        """Should be case insensitive."""
+        assert "furnace" in detect_device_types("FURNACE filter")
+        assert "hrv" in detect_device_types("HRV settings")
+
+
+class TestBuildMetadataFilters:
+    """Tests for build_metadata_filters() function."""
+
+    def test_returns_none_for_empty_list(self) -> None:
+        """Should return None when no device types provided."""
+        assert build_metadata_filters([]) is None
+
+    def test_creates_single_filter(self) -> None:
+        """Should create a filter for a single device type."""
+        from llama_index.core.vector_stores import MetadataFilter
+
+        filters = build_metadata_filters(["furnace"])
+
+        assert filters is not None
+        assert len(filters.filters) == 1
+        # Type narrowing for mypy
+        first_filter = filters.filters[0]
+        assert isinstance(first_filter, MetadataFilter)
+        assert first_filter.key == "device_type"
+        assert first_filter.value == "furnace"
+
+    def test_creates_or_filter_for_multiple_devices(self) -> None:
+        """Should create OR filter for multiple device types."""
+        from llama_index.core.vector_stores import FilterCondition
+
+        filters = build_metadata_filters(["furnace", "humidifier"])
+
+        assert filters is not None
+        assert len(filters.filters) == 2
+        assert filters.condition == FilterCondition.OR
+
+
+# =============================================================================
+# HYBRID FALLBACK TESTS
+# =============================================================================
+
+
+class TestGetTopScore:
+    """Tests for _get_top_score() helper function."""
+
+    def test_returns_zero_for_empty_list(self) -> None:
+        """Should return 0.0 for empty results."""
+        assert _get_top_score([]) == 0.0
+
+    def test_returns_first_score(self) -> None:
+        """Should return the score of the first result."""
+        node = create_mock_node("test", score=0.85)
+        assert _get_top_score([node]) == 0.85
+
+    def test_handles_none_score(self) -> None:
+        """Should return 0.0 if score is None."""
+        node = create_mock_node("test", score=0.0)
+        node.score = None
+        assert _get_top_score([node]) == 0.0
+
+
+class TestShouldFallbackToUnfiltered:
+    """Tests for _should_fallback_to_unfiltered() helper function."""
+
+    def test_returns_true_for_empty_results(self) -> None:
+        """Should fall back when no results."""
+        assert _should_fallback_to_unfiltered([]) is True
+
+    def test_returns_true_for_low_score(self) -> None:
+        """Should fall back when top score is below threshold."""
+        # min_relevance_score default is 0.3
+        node = create_mock_node("test", score=0.2)
+        with patch("app.rag.retriever.settings") as mock_settings:
+            mock_settings.rag.min_relevance_score = 0.3
+            assert _should_fallback_to_unfiltered([node]) is True
+
+    def test_returns_false_for_good_score(self) -> None:
+        """Should not fall back when top score is above threshold."""
+        node = create_mock_node("test", score=0.5)
+        with patch("app.rag.retriever.settings") as mock_settings:
+            mock_settings.rag.min_relevance_score = 0.3
+            assert _should_fallback_to_unfiltered([node]) is False
 
 
 # =============================================================================

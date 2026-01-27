@@ -12,9 +12,11 @@ from app.rag.extractors import (
     EXTRACTORS,
     _extract_with_pdfplumber,
     _extract_with_pypdf,
+    _is_section_heading,
     extract_text,
     extract_text_from_pdf,
     get_extractor,
+    preprocess_text_with_sections,
 )
 
 # =============================================================================
@@ -313,3 +315,82 @@ class TestExtractTextFromPdf:
 
             with pytest.raises(ValueError, match="No text could be extracted"):
                 extract_text_from_pdf(Path("test.pdf"))
+
+
+# =============================================================================
+# UNIT TESTS - Section Preprocessing (Week 4)
+# =============================================================================
+
+
+class TestIsSectionHeading:
+    """Tests for _is_section_heading function."""
+
+    def test_detects_uppercase_headings(self) -> None:
+        """Should detect ALL CAPS section headings."""
+        assert _is_section_heading("SAFETY CONSIDERATIONS") is True
+        assert _is_section_heading("BEFORE STARTING YOUR FURNACE") is True
+        assert _is_section_heading("MAINTENANCE CHECKLIST") is True
+
+    def test_rejects_short_lines(self) -> None:
+        """Should reject lines shorter than minimum length."""
+        assert _is_section_heading("WARNING") is False
+        assert _is_section_heading("NOTE") is False
+        assert _is_section_heading("A B C") is False
+
+    def test_rejects_long_lines(self) -> None:
+        """Should reject lines longer than maximum length (likely paragraphs)."""
+        long_line = "THIS IS A VERY LONG LINE THAT EXCEEDS THE MAXIMUM LENGTH FOR A HEADING AND IS PROBABLY A PARAGRAPH"
+        assert _is_section_heading(long_line) is False
+
+    def test_rejects_hazard_warnings(self) -> None:
+        """Should reject safety warning labels."""
+        assert _is_section_heading("FIRE OR EXPLOSION HAZARD") is False
+        assert _is_section_heading("CARBON MONOXIDE POISONING HAZARD") is False
+
+    def test_rejects_page_headers(self) -> None:
+        """Should reject common page headers/footers."""
+        assert _is_section_heading("CONDENSING GAS FURNACE: OWNER'S MANUAL") is False
+
+    def test_rejects_table_of_contents_lines(self) -> None:
+        """Should reject lines with many dots (ToC entries)."""
+        assert _is_section_heading("TABLE OF CONTENTS . . . . . . . 2") is False
+
+    def test_rejects_page_markers(self) -> None:
+        """Should reject page markers."""
+        assert _is_section_heading("[Page 1]") is False
+        assert _is_section_heading("[Page 12]") is False
+
+
+class TestPreprocessTextWithSections:
+    """Tests for preprocess_text_with_sections function."""
+
+    def test_adds_markdown_headings(self) -> None:
+        """Should add ## prefix to section headings."""
+        text = """Some intro text
+
+SAFETY CONSIDERATIONS
+Here is some safety info.
+
+MAINTENANCE CHECKLIST
+Here is the checklist."""
+
+        result = preprocess_text_with_sections(text)
+
+        assert "## SAFETY CONSIDERATIONS" in result
+        assert "## MAINTENANCE CHECKLIST" in result
+
+    def test_preserves_non_heading_lines(self) -> None:
+        """Should preserve lines that aren't headings."""
+        text = """FILTERING OUT TROUBLE
+Check your filter every month.
+Replace if dirty."""
+
+        result = preprocess_text_with_sections(text)
+
+        assert "Check your filter every month." in result
+        assert "Replace if dirty." in result
+
+    def test_handles_empty_text(self) -> None:
+        """Should handle empty text gracefully."""
+        result = preprocess_text_with_sections("")
+        assert result == ""
