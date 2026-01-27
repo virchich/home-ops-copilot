@@ -503,8 +503,18 @@ def main() -> int:
     questions = load_golden_questions(golden_path)
 
     if args.limit:
-        questions = questions[: args.limit]
-        print(f"Limited to {args.limit} questions")
+        # Prioritize questions with ground truth for Ragas metrics
+        with_gt = [q for q in questions if q.get("ground_truth")]
+        without_gt = [q for q in questions if not q.get("ground_truth")]
+
+        # Take as many with ground truth as possible, then fill with others
+        if len(with_gt) >= args.limit:
+            questions = with_gt[: args.limit]
+        else:
+            questions = with_gt + without_gt[: args.limit - len(with_gt)]
+
+        gt_count = sum(1 for q in questions if q.get("ground_truth"))
+        print(f"Limited to {args.limit} questions ({gt_count} with ground truth)")
 
     print(f"Running evaluation on {len(questions)} questions...")
 
