@@ -6,6 +6,10 @@ Each extractor function takes a file path and returns extracted text.
 Supported formats:
 - PDF (via pypdf with pdfplumber fallback)
 
+Week 4 Enhancement: Section-aware preprocessing
+- Detects ALL CAPS section headings from PDF text
+- Converts to markdown-style headings for better chunking
+
 Future formats can be added by implementing new extract_text_from_* functions.
 """
 
@@ -161,3 +165,165 @@ def extract_text(file_path: Path) -> str:
     """
     extractor = get_extractor(file_path)
     return extractor(file_path)
+
+
+# =============================================================================
+# SECTION-AWARE PREPROCESSING (Week 4)
+# =============================================================================
+
+
+# Minimum length for a line to be considered a section heading
+MIN_HEADING_LENGTH = 12
+
+# Maximum length for a heading (longer lines are probably paragraphs)
+MAX_HEADING_LENGTH = 60
+
+# Minimum number of words for a heading
+MIN_HEADING_WORDS = 2
+
+# Patterns to exclude from being treated as headings (exact matches)
+HEADING_EXCLUSIONS = {
+    # Single words that aren't real headings
+    "WARNING",
+    "CAUTION",
+    "NOTE",
+    "IMPORTANT",
+}
+
+# Substrings that indicate non-section headings
+HEADING_EXCLUSION_PATTERNS = [
+    # Safety warnings
+    "HAZARD",
+    "WARNING!",
+    "CAUTION!",
+    # Page headers/footers
+    "OWNER'S MANUAL",
+    ": OWNER'S MANUAL",
+    "CONDENSING GAS",  # Common page title
+    # Figure and diagram labels
+    "GAS CONTROL",
+    "SHOWN IN",
+    "LIMIT SWITCH",
+    "GAS BURNER",
+    "HOT SURFACE",
+    "BEHIND GAS",
+    "FILTER CABINET",
+    "MANUAL RESET",  # Figure label
+    # Table headers
+    "HEIGHT -",
+    "FILTER SIZE",
+    "FILTER TYPE",
+    "INSPECTION INTERVAL",
+    # Notes and forms
+    "NOTE TO",
+    "INFORMATION:",
+    "CONTACT INFORMATION",
+    # Partial lines (usually figure captions or continuation)
+    "(",
+    ")",
+    '"',
+    "SETTING FOR YOUR",  # Continuation line
+    "SERVICE CALL",  # Usually quoted
+]
+
+
+def _is_section_heading(line: str) -> bool:
+    """
+    Determine if a line is likely a section heading.
+
+    Criteria for a heading:
+    1. Mostly uppercase letters (>80%)
+    2. Length within reasonable bounds (12-60 chars)
+    3. At least 2 words
+    4. Not in the exclusion list or matching exclusion patterns
+    5. Doesn't look like table of contents (with dots)
+    6. Has at least some alphabetic characters
+
+    Args:
+        line: A single line of text.
+
+    Returns:
+        True if the line appears to be a section heading.
+    """
+    stripped = line.strip()
+
+    # Skip empty or very short lines
+    if len(stripped) < MIN_HEADING_LENGTH:
+        return False
+
+    # Skip very long lines (likely paragraphs)
+    if len(stripped) > MAX_HEADING_LENGTH:
+        return False
+
+    # Skip if in exclusion list
+    if stripped in HEADING_EXCLUSIONS:
+        return False
+
+    # Skip if matches any exclusion pattern
+    stripped_upper = stripped.upper()
+    for pattern in HEADING_EXCLUSION_PATTERNS:
+        if pattern in stripped_upper:
+            return False
+
+    # Skip if looks like table of contents (lots of dots)
+    if stripped.count(".") > 2:
+        return False
+
+    # Skip if it's a page marker
+    if stripped.startswith("[Page"):
+        return False
+
+    # Require minimum number of words
+    words = stripped.split()
+    if len(words) < MIN_HEADING_WORDS:
+        return False
+
+    # Get only alphabetic characters
+    alpha_chars = [c for c in stripped if c.isalpha()]
+    if len(alpha_chars) < 8:
+        return False
+
+    # Check if mostly uppercase
+    upper_count = sum(1 for c in alpha_chars if c.isupper())
+    upper_ratio = upper_count / len(alpha_chars) if alpha_chars else 0
+
+    # Consider it a heading if >80% uppercase
+    return upper_ratio > 0.8
+
+
+def preprocess_text_with_sections(text: str) -> str:
+    """
+    Preprocess text to add markdown-style section headings.
+
+    This function detects ALL CAPS section headings in PDF-extracted text
+    and converts them to markdown format (## HEADING). This enables
+    structure-aware chunking using MarkdownNodeParser.
+
+    Args:
+        text: Raw extracted text from a document.
+
+    Returns:
+        Text with markdown-style headings inserted before sections.
+
+    Example:
+        Input:
+            "SAFETY CONSIDERATIONS
+            Installing and servicing..."
+
+        Output:
+            "## SAFETY CONSIDERATIONS
+            Installing and servicing..."
+    """
+    lines = text.split("\n")
+    processed_lines = []
+
+    for line in lines:
+        if _is_section_heading(line):
+            # Convert to markdown heading
+            heading = line.strip()
+            # Use ## for main sections (h2 level)
+            processed_lines.append(f"\n## {heading}\n")
+        else:
+            processed_lines.append(line)
+
+    return "\n".join(processed_lines)

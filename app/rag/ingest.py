@@ -25,11 +25,12 @@ from llama_index.core import (
     VectorStoreIndex,
     load_index_from_storage,
 )
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
+from llama_index.core.schema import TextNode
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from app.core.config import settings
-from app.rag.extractors import extract_text_from_pdf
+from app.rag.extractors import extract_text_from_pdf, preprocess_text_with_sections
 from app.rag.schema import DocumentMetadata, MetadataFile
 
 # =============================================================================
@@ -128,7 +129,9 @@ def load_documents(metadata_dict: dict[str, DocumentMetadata]) -> list[Document]
         # LlamaIndex provides a SimpleDirectoryReader, but we'll do it manually
         # for more control and to show you what's happening
         try:
-            text = extract_text_from_pdf(pdf_path)
+            raw_text = extract_text_from_pdf(pdf_path)
+            # Week 4: Preprocess to add markdown section headings
+            text = preprocess_text_with_sections(raw_text)
         except Exception as e:
             logger.error(f"Failed to extract text from {file_name}: {e}")
             continue
@@ -172,13 +175,12 @@ def build_index(documents: list[Document]) -> VectorStoreIndex:
     """
     Build a vector index from documents.
 
-    Process:
-    1. Split each document into chunks (~512 tokens each)
-    2. For each chunk, call OpenAI to get an embedding vector
-    3. Store chunks + vectors in the index
+    Week 4 Enhancement: Two-stage chunking
+    1. First split by markdown sections (MarkdownNodeParser)
+    2. Then split large sections with SentenceSplitter
 
-    The index enables semantic search: given a question, find the
-    most similar chunks based on embedding similarity.
+    This creates more coherent chunks that respect document structure
+    while keeping chunks within the token limit.
 
     Args:
         documents: List of LlamaIndex Document objects
@@ -189,46 +191,90 @@ def build_index(documents: list[Document]) -> VectorStoreIndex:
     logger.info("Building vector index...")
 
     # Configure the embedding model
-    # This is what converts text -> vectors
     embed_model = OpenAIEmbedding(
         model=settings.rag.embedding_model,
         api_key=settings.openai_api_key,
     )
-
-    # Configure the text splitter (chunker)
-    # SentenceSplitter tries to split at sentence boundaries
-    # This keeps chunks more coherent than splitting mid-sentence
-    node_parser = SentenceSplitter(
-        chunk_size=settings.rag.chunk_size,
-        chunk_overlap=settings.rag.chunk_overlap,
-    )
-
-    # Set global settings for LlamaIndex
-    # These will be used by VectorStoreIndex.from_documents()
     Settings.embed_model = embed_model
-    Settings.node_parser = node_parser
 
-    # Build the index
-    # This does a LOT under the hood:
-    # 1. Splits documents into nodes (chunks)
-    # 2. Calls OpenAI API to get embeddings for each chunk
-    # 3. Stores everything in an in-memory vector store
     logger.info(f"Processing {len(documents)} documents...")
     logger.info(
         f"Chunk size: {settings.rag.chunk_size} tokens, "
         f"overlap: {settings.rag.chunk_overlap} tokens"
     )
 
-    index = VectorStoreIndex.from_documents(
-        documents,
-        show_progress=True,  # Show progress bar
+    # Two-stage chunking for better retrieval quality
+    all_nodes = _chunk_documents_with_sections(documents)
+
+    logger.info(f"Created {len(all_nodes)} chunks from {len(documents)} documents")
+
+    # Build the index from pre-chunked nodes
+    index = VectorStoreIndex(
+        nodes=all_nodes,
+        show_progress=True,
     )
 
-    # Count how many chunks (nodes) were created
-    num_nodes = len(index.docstore.docs)
-    logger.info(f"Created {num_nodes} chunks (nodes) from {len(documents)} documents")
-
     return index
+
+
+def _chunk_documents_with_sections(documents: list[Document]) -> list[TextNode]:
+    """
+    Chunk documents using two-stage approach.
+
+    Stage 1: Split by markdown sections (respects document structure)
+    Stage 2: Split large sections with SentenceSplitter (respects token limit)
+
+    This approach creates chunks that:
+    - Keep related content together (section-aware)
+    - Stay within token limits (sentence-aware fallback)
+    - Preserve section context in metadata
+
+    Args:
+        documents: Documents with markdown-preprocessed text
+
+    Returns:
+        List of TextNode objects ready for indexing
+    """
+    # Stage 1: Section-based splitting
+    markdown_parser = MarkdownNodeParser()
+
+    # Stage 2: Sentence-based splitting for large sections
+    sentence_splitter = SentenceSplitter(
+        chunk_size=settings.rag.chunk_size,
+        chunk_overlap=settings.rag.chunk_overlap,
+    )
+
+    all_nodes: list[TextNode] = []
+
+    for doc in documents:
+        # First, split by markdown sections
+        section_nodes = markdown_parser.get_nodes_from_documents([doc])
+
+        for section_node in section_nodes:
+            # Check if section is too large
+            section_text = section_node.get_content()
+            # Rough estimate: 4 chars per token
+            estimated_tokens = len(section_text) / 4
+
+            if estimated_tokens > settings.rag.chunk_size:
+                # Section too large - split further with SentenceSplitter
+                sub_nodes = sentence_splitter.get_nodes_from_documents(
+                    [Document(text=section_text, metadata=section_node.metadata)]
+                )
+                # Preserve section header in metadata for each sub-node
+                section_header = section_node.metadata.get("Header_1", "")
+                for sub_node in sub_nodes:
+                    if isinstance(sub_node, TextNode):
+                        sub_node.metadata["section"] = section_header
+                        all_nodes.append(sub_node)
+            else:
+                # Section is small enough - use as-is
+                if isinstance(section_node, TextNode):
+                    section_header = section_node.metadata.get("Header_1", "")
+                    section_node.metadata["section"] = section_header
+                    all_nodes.append(section_node)
+
+    return all_nodes
 
 
 # =============================================================================
