@@ -25,3 +25,11 @@ export interface ChatMessage {
   isLoading: boolean;
   error: string | null;
 }
+
+export interface Chat {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  updatedAt: number;
+}
