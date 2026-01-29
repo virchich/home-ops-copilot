@@ -7,8 +7,8 @@
 ## Current Status
 
 **Phase**: Week 4 Complete
-**Last Updated**: 2026-01-27
-**Current Focus**: Ready for Week 5 - Seasonal maintenance planner (LangGraph)
+**Last Updated**: 2026-01-29
+**Current Focus**: Ready for Week 4.5 - UI Chat Interface (React + Node.js)
 
 ---
 
@@ -65,6 +65,20 @@
 - [x] Run golden set again + track lift with Ragas
 
 **Deliverable**: Measurable improvement on retrieval/grounding. ✅
+
+---
+
+## Week 4.5 — UI: Chat Interface (React + Node.js)
+
+**Goal**: Build a usable chat interface for the RAG system.
+
+- [ ] Set up React + Node.js frontend project (Vite or Next.js)
+- [ ] Chat interface with question input and response display
+- [ ] Display answer, citations (with source links), and risk level badge
+- [ ] Show retrieved chunks (expandable/collapsible)
+- [ ] Connect to existing FastAPI `/ask` endpoint
+
+**Deliverable**: Can ask questions and see cited answers in a browser.
 
 ---
 
