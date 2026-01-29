@@ -1,4 +1,4 @@
-.PHONY: install check test test-unit test-integration eval eval-quick run ingest ingest-rebuild check-docs clean clean-reports help
+.PHONY: install check test test-unit test-integration eval eval-quick run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
 
 # Default target
 help:
@@ -16,6 +16,12 @@ help:
 	@echo "  make check-docs       - Check for PDFs missing from metadata.json"
 	@echo "  make clean            - Remove cache files and build artifacts"
 	@echo "  make clean-reports    - Remove eval report files"
+	@echo "  make frontend-install - Install frontend dependencies"
+	@echo "  make frontend-dev     - Start frontend development server"
+	@echo "  make frontend-build   - Build frontend for production"
+	@echo "  make docker-up        - Start backend + frontend with Docker Compose"
+	@echo "  make docker-down      - Stop Docker Compose services"
+	@echo "  make docker-build     - Rebuild Docker images"
 
 # Install dependencies
 install:
@@ -75,3 +81,27 @@ clean:
 clean-reports:
 	rm -f eval/reports/*.json
 	@echo "Eval reports cleared"
+
+# Frontend: Install dependencies
+frontend-install:
+	cd frontend && npm install
+
+# Frontend: Start development server
+frontend-dev:
+	cd frontend && npm run dev
+
+# Frontend: Build for production
+frontend-build:
+	cd frontend && npm run build
+
+# Docker: Start all services
+docker-up:
+	docker compose up -d
+
+# Docker: Stop all services
+docker-down:
+	docker compose down
+
+# Docker: Rebuild images
+docker-build:
+	docker compose build

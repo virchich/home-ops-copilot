@@ -1,6 +1,7 @@
 """FastAPI application for Home Ops Copilot."""
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -11,6 +12,15 @@ app = FastAPI(
     title="Home Ops Copilot",
     description="RAG-powered assistant for home maintenance, troubleshooting, and parts management",
     version="0.1.0",
+)
+
+# CORS middleware for frontend development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
