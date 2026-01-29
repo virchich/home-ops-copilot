@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import type { ChatMessage as ChatMessageType } from '../types';
 import Markdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { RiskBadge } from './RiskBadge';
 import { CitationList } from './CitationList';
 import { ContextDrawer } from './ContextDrawer';
@@ -8,36 +11,108 @@ interface ChatMessageProps {
   message: ChatMessageType;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+function TypingIndicator() {
   return (
-    <div className="space-y-4 py-4 border-b border-gray-100 last:border-b-0">
+    <div className="flex items-center gap-1">
+      <span className="text-sm text-gray-500 dark:text-gray-400">Thinking</span>
+      <div className="flex gap-1">
+        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" />
+      </div>
+    </div>
+  );
+}
+
+export function ChatMessage({ message }: ChatMessageProps) {
+  const [copied, setCopied] = useState(false);
+  const isDark = document.documentElement.classList.contains('dark');
+
+  const handleCopy = async () => {
+    if (!message.response) return;
+
+    try {
+      await navigator.clipboard.writeText(message.response.answer);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <div className="space-y-3 sm:space-y-4 py-3 sm:py-4 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
       {/* User question */}
       <div className="flex justify-end">
-        <div className="max-w-[80%] bg-blue-600 text-white rounded-lg px-4 py-2">
+        <div className="max-w-[90%] sm:max-w-[80%] bg-blue-600 text-white rounded-lg px-3 sm:px-4 py-2">
           <p className="text-sm">{message.question}</p>
         </div>
       </div>
 
       {/* Assistant response */}
       <div className="flex justify-start">
-        <div className="max-w-[80%] bg-gray-100 rounded-lg px-4 py-3">
+        <div className="max-w-[90%] sm:max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-lg px-3 sm:px-4 py-3 group relative">
           {message.isLoading ? (
-            <div className="flex items-center gap-2 text-gray-500">
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <span className="text-sm">Thinking...</span>
-            </div>
+            <TypingIndicator />
           ) : message.error ? (
-            <div className="text-red-600">
+            <div className="text-red-600 dark:text-red-400">
               <p className="text-sm font-medium">Error</p>
               <p className="text-sm">{message.error}</p>
             </div>
           ) : message.response ? (
             <div>
-              <div className="prose prose-sm prose-gray max-w-none">
-                <Markdown>{message.response.answer}</Markdown>
+              {/* Copy button - appears on hover */}
+              <button
+                onClick={handleCopy}
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                title={copied ? 'Copied!' : 'Copy answer'}
+              >
+                {copied ? (
+                  <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
+
+              <div className="prose prose-sm prose-gray dark:prose-invert max-w-none">
+                <Markdown
+                  components={{
+                    code({ className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      const codeString = String(children).replace(/\n$/, '');
+
+                      if (match) {
+                        return (
+                          <SyntaxHighlighter
+                            style={isDark ? oneDark : oneLight}
+                            language={match[1]}
+                            PreTag="div"
+                            customStyle={{
+                              margin: 0,
+                              borderRadius: '0.375rem',
+                              fontSize: '0.8125rem',
+                            }}
+                          >
+                            {codeString}
+                          </SyntaxHighlighter>
+                        );
+                      }
+
+                      // Inline code
+                      return (
+                        <code className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-sm" {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
+                  {message.response.answer}
+                </Markdown>
               </div>
               <div className="mt-3">
                 <RiskBadge level={message.response.risk_level} />

@@ -25,7 +25,7 @@ export function ChatInput({ onSubmit, disabled = false }: ChatInputProps) {
   };
 
   return (
-    <div className="flex gap-2 p-4 border-t border-gray-200 bg-white">
+    <div className="flex gap-2 p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
@@ -33,12 +33,12 @@ export function ChatInput({ onSubmit, disabled = false }: ChatInputProps) {
         placeholder="Ask about your home maintenance..."
         disabled={disabled}
         rows={2}
-        className="flex-1 resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+        className="flex-1 resize-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 sm:px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed placeholder:text-gray-400 dark:placeholder:text-gray-500"
       />
       <button
         onClick={handleSubmit}
         disabled={disabled || !question.trim()}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+        className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
       >
         {disabled ? (
           <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">

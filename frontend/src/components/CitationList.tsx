@@ -11,7 +11,7 @@ export function CitationList({ citations }: CitationListProps) {
 
   if (citations.length === 0) {
     return (
-      <div className="text-sm text-gray-500 italic">
+      <div className="text-sm text-gray-500 dark:text-gray-400 italic mt-3">
         No sources available
       </div>
     );
@@ -21,7 +21,7 @@ export function CitationList({ citations }: CitationListProps) {
     <div className="mt-3">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+        className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
       >
         <svg
           className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
