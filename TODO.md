@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 5 In Progress
+**Phase**: Week 5 Complete
 **Last Updated**: 2026-02-05
-**Current Focus**: Week 5 - Seasonal Maintenance Planner (LangGraph) - Phase 3 Complete
+**Current Focus**: Week 5 - Seasonal Maintenance Planner (LangGraph) - All Phases Complete
 
 ---
 
@@ -86,11 +86,11 @@
 
 **Goal**: First LangGraph workflow for maintenance planning.
 
-- [ ] Input: house profile + season
-- [ ] Steps: retrieve relevant docs → generate checklist (STRICT JSON) → render markdown
-- [ ] Output: Apple Notes friendly checklist
+- [x] Input: house profile + season
+- [x] Steps: retrieve relevant docs → generate checklist (STRICT JSON) → render markdown
+- [x] Output: Apple Notes friendly checklist
 
-**Deliverable**: "Winter maintenance plan" is generated cleanly.
+**Deliverable**: "Winter maintenance plan" is generated cleanly. ✅
 
 ---
 
@@ -217,9 +217,15 @@ These are the first things to tackle in Week 1:
   - Added `ChecklistResponse` wrapper model and `CHECKLIST_SYSTEM_PROMPT`
   - Generates 15-25 detailed checklist items with priorities, frequencies, notes, sources
   - Render node: Apple Notes-friendly markdown grouped by priority (High/Medium/Low)
-  - Checkboxes, inline metadata, source citations at bottom
-- Key files: `app/workflows/maintenance_planner.py`, `app/rag/retriever.py`
-- Next: Phase 4 - Polish & Test (season-specific logic, end-to-end testing, eval suite)
+- **Phase 4: Polish & Test**
+  - Added `SEASON_CONTEXT` with priorities/focus for each season
+  - End-to-end tested all 4 seasons (Spring: 19, Summer: 12, Fall: 13, Winter: 24 items)
+  - Created `tests/test_maintenance_planner.py` (5 unit + 4 integration tests)
+  - Created `eval/maintenance_golden.json` with quality criteria per season
+  - Created `eval/run_maintenance_eval.py` evaluation script
+  - Added `make eval-maintenance` Makefile command
+- Key files: `app/workflows/maintenance_planner.py`, `tests/test_maintenance_planner.py`, `eval/run_maintenance_eval.py`
+- **Week 5 Complete!** Ready for Week 6 (Troubleshooting workflow)
 
 **2026-01-27** - Week 4 Complete
 - **Section-aware chunking**: Added heading detection for ALL CAPS patterns in PDFs
