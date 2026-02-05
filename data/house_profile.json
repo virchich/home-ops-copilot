@@ -1,6 +1,6 @@
 {
   "name": "Main Residence",
-  "year_built": null,
+  "year_built": 2018,
   "square_footage": null,
   "climate_zone": "cold",
   "house_type": "single_family",
@@ -15,14 +15,14 @@
     "thermostat": {
       "model": "Premium",
       "manufacturer": "Ecobee",
-      "fuel_type": null,
-      "install_year": 2018,
+      "fuel_type": "N/A",
+      "install_year": 2022,
       "notes": "Smart thermostat on main floor"
     },
     "hrv": {
       "model": "RNC5-HEX",
       "manufacturer": "Lifebreath",
-      "fuel_type": null,
+      "fuel_type": "N/A",
       "install_year": 2018,
       "notes": "Heat Recovery Ventilator in basement"
     },
@@ -36,21 +36,21 @@
     "water_softener": {
       "model": "5600",
       "manufacturer": "Fleck",
-      "fuel_type": null,
+      "fuel_type": "N/A",
       "install_year": 2018,
       "notes": "Fleck control valve, basement"
     },
     "humidifier": {
       "model": "570",
       "manufacturer": "GeneralAire",
-      "fuel_type": null,
+      "fuel_type": "N/A",
       "install_year": 2018,
       "notes": "Bypass humidifier connected to furnace"
     },
     "energy_meter": {
       "model": "EMC3P-P2P1",
       "manufacturer": "Eaton",
-      "fuel_type": null,
+      "fuel_type": "N/A",
       "install_year": 2018,
       "notes": "Three-phase energy meter, outside"
     }
