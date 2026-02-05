@@ -286,6 +286,7 @@ def retrieve(
     question: str,
     top_k: int | None = None,
     auto_filter: bool = True,
+    device_types: list[str] | None = None,
 ) -> list[NodeWithScore]:
     """
     Retrieve the most relevant chunks for a question.
@@ -305,6 +306,9 @@ def retrieve(
         top_k: Number of chunks to retrieve (default from settings.rag.top_k)
         auto_filter: If True, automatically detect device types and filter.
             Set to False to search all documents regardless of question content.
+        device_types: Explicit list of device types to filter by. If provided,
+            these are used instead of auto-detection. Useful for workflows
+            that know which devices to query (e.g., from a house profile).
 
     Returns:
         List of NodeWithScore objects, each containing:
@@ -317,6 +321,9 @@ def retrieve(
         ...     print(f"Score: {r.score:.3f}")
         ...     print(f"Source: {r.node.metadata['file_name']}")
         ...     print(f"Text: {r.node.text[:100]}...")
+
+        # With explicit device types (for workflows)
+        >>> results = retrieve("winter maintenance", device_types=["furnace", "hrv"])
     """
     # Use settings default if not specified
     if top_k is None:
@@ -329,14 +336,22 @@ def retrieve(
     # Reranking works best with more candidates to choose from
     fetch_k = top_k * 3 if settings.rag.rerank_enabled else top_k
 
-    # Detect device types and build metadata filters
+    # Determine device types for filtering
+    # Priority: explicit device_types > auto_filter > no filtering
     metadata_filters = None
-    device_types: list[str] = []
-    if auto_filter:
-        device_types = detect_device_types(question)
-        metadata_filters = build_metadata_filters(device_types)
+    effective_device_types: list[str] = []
+
+    if device_types:
+        # Use explicitly provided device types (e.g., from house profile)
+        effective_device_types = device_types
+        metadata_filters = build_metadata_filters(effective_device_types)
+        logger.info(f"Using explicit device types: {effective_device_types}")
+    elif auto_filter:
+        # Auto-detect device types from the question
+        effective_device_types = detect_device_types(question)
+        metadata_filters = build_metadata_filters(effective_device_types)
         if metadata_filters:
-            logger.info(f"Filtering by device types: {device_types}")
+            logger.info(f"Auto-detected device types: {effective_device_types}")
 
     # Create a retriever with optional metadata filters
     retriever = VectorIndexRetriever(
