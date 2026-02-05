@@ -63,9 +63,11 @@ export function HomePage() {
         </div>
 
         {/* Mode cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
           {modes.map((mode) => (
-            <ModeCardComponent key={mode.id} mode={mode} />
+            <div key={mode.id} className="w-full sm:w-80">
+              <ModeCardComponent mode={mode} />
+            </div>
           ))}
         </div>
       </main>
