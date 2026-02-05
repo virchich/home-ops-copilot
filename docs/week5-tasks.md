@@ -5,11 +5,11 @@
 
 ---
 
-## Phase 1: Foundation
+## Phase 1: Foundation ✅
 
-- [ ] **1.1** Add LangGraph dependency (`uv add langgraph`) and verify import
-- [ ] **1.2** Define house profile schema — Pydantic model for house metadata (systems installed, climate zone, house age, etc.)
-- [ ] **1.3** Create sample house profile — JSON file representing actual house for testing
+- [x] **1.1** Add LangGraph dependency (`uv add langgraph`) and verify import
+- [x] **1.2** Define house profile schema — Pydantic model for house metadata (systems installed, climate zone, house age, etc.)
+- [x] **1.3** Create sample house profile — JSON file representing actual house for testing
 
 ## Phase 2: Workflow Skeleton
 
@@ -33,10 +33,21 @@
 
 ## Session Notes
 
-<!-- Add notes as you work through the tasks -->
+**2026-02-05** - Phase 1 Complete
+- Added LangGraph 1.0.5 (brings in langchain-core, langgraph-checkpoint, langgraph-sdk)
+- Created `app/workflows/` package with models:
+  - `Season`, `ClimateZone`, `HouseType` enums
+  - `InstalledSystem` for device details
+  - `HouseProfile` with helper methods (`has_system()`, `get_installed_device_types()`)
+  - `load_house_profile()` utility function
+- Created `data/house_profile.json` with 7 systems (all installed 2018):
+  - Furnace (Carrier, gas), Thermostat (Ecobee), HRV (Lifebreath)
+  - Water heater (Giant, gas), Water softener (Fleck), Humidifier (GeneralAire)
+  - Energy meter (Eaton)
+- All tests pass (195), linting/mypy clean
 
 ---
 
 ## Open Questions
 
-- LangGraph vs PydanticGraph? (Decision pending)
+- ~~LangGraph vs PydanticGraph?~~ **Decided: LangGraph**
