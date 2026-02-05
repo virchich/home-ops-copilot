@@ -13,7 +13,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem(THEME_KEY);
     if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Default to light mode for first-time visitors
+    return false;
   });
 
   useEffect(() => {

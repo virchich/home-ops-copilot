@@ -73,21 +73,38 @@ export function ChecklistDisplay({ markdown, season, houseName, sourcesUsed }: C
 
       {/* Markdown content */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-        <div className="prose prose-sm prose-gray dark:prose-invert max-w-none">
+        <div className="prose prose-sm prose-gray dark:prose-invert max-w-none checklist-content">
           <Markdown
             components={{
               // Style checkboxes nicely
               input: ({ ...props }) => (
                 <input
                   {...props}
-                  className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 align-middle"
                 />
               ),
-              // Style list items
+              // Render nested lists properly - notes appear as sub-items
+              ul: ({ children, ...props }) => (
+                <ul className="list-none pl-0 space-y-3" {...props}>
+                  {children}
+                </ul>
+              ),
               li: ({ children, ...props }) => (
-                <li className="flex items-start gap-1" {...props}>
+                <li className="pl-0" {...props}>
                   {children}
                 </li>
+              ),
+              // Make task text more readable
+              strong: ({ children, ...props }) => (
+                <strong className="font-semibold text-gray-900 dark:text-white" {...props}>
+                  {children}
+                </strong>
+              ),
+              // Style device type italics
+              em: ({ children, ...props }) => (
+                <em className="text-blue-600 dark:text-blue-400 not-italic font-medium text-sm" {...props}>
+                  {children}
+                </em>
               ),
             }}
           >
