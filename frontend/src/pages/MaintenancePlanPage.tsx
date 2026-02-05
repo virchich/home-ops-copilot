@@ -197,8 +197,9 @@ export function MaintenancePlanPage() {
 
         {/* Generated Plan */}
         {plan && !isEditing && (
-          <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+          <section className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
             <ChecklistDisplay
+              checklistItems={plan.checklist_items}
               markdown={plan.markdown}
               season={plan.season}
               houseName={plan.house_name}
