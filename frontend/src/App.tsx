@@ -3,6 +3,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { HomePage } from './pages/HomePage';
 import { ChatPage } from './pages/ChatPage';
+import { MaintenancePlanPage } from './pages/MaintenancePlanPage';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/chat" element={<ChatPage />} />
+            <Route path="/maintenance-plan" element={<MaintenancePlanPage />} />
           </Routes>
         </BrowserRouter>
       </ChatProvider>

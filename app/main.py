@@ -9,9 +9,11 @@ from app.rag.models import Citation
 from app.rag.query import query
 from app.workflows.maintenance_planner import create_maintenance_planner
 from app.workflows.models import (
+    HouseProfile,
     MaintenancePlanRequest,
     MaintenancePlanResponse,
     load_house_profile,
+    save_house_profile,
 )
 
 app = FastAPI(
@@ -132,3 +134,31 @@ def generate_maintenance_plan(request: MaintenancePlanRequest) -> MaintenancePla
         markdown=result.get("markdown_output", ""),
         sources_used=sources_used,
     )
+
+
+@app.get("/house-profile", response_model=HouseProfile)
+def get_house_profile() -> HouseProfile:
+    """
+    Get the current house profile.
+
+    Returns the house profile from data/house_profile.json.
+    """
+    try:
+        return load_house_profile()
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=404,
+            detail="House profile not found. Create data/house_profile.json first.",
+        ) from err
+
+
+@app.put("/house-profile", response_model=HouseProfile)
+def update_house_profile(profile: HouseProfile) -> HouseProfile:
+    """
+    Update the house profile.
+
+    Saves the provided house profile to data/house_profile.json.
+    Returns the saved profile.
+    """
+    save_house_profile(profile)
+    return profile
