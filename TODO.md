@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 5 Complete
+**Phase**: Week 5 Complete + UI Enhancement
 **Last Updated**: 2026-02-05
-**Current Focus**: Week 5 - Seasonal Maintenance Planner (LangGraph) - All Phases Complete
+**Current Focus**: Added Maintenance Plan UI page to frontend
 
 ---
 
@@ -196,6 +196,34 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-02-05** - Maintenance Plan UI
+- Added dedicated `/maintenance-plan` page to React frontend
+- **Backend additions**:
+  - `GET /house-profile` - Load house profile from JSON
+  - `PUT /house-profile` - Save house profile to JSON
+  - Added `save_house_profile()` helper function to models.py
+- **Frontend types** (types.ts):
+  - Season, ClimateZone, HouseType enums
+  - InstalledSystem, HouseProfile interfaces
+  - ChecklistItem, MaintenancePlanRequest, MaintenancePlanResponse interfaces
+- **API client** (api/client.ts):
+  - `generateMaintenancePlan(season)` - Call maintenance plan endpoint
+  - `getHouseProfile()` - Load house profile
+  - `updateHouseProfile(profile)` - Save house profile
+- **Components created**:
+  - `SeasonSelector.tsx` - Button group for season selection
+  - `ChecklistDisplay.tsx` - Renders markdown with copy/export buttons
+  - `HouseProfileEditor.tsx` - Form for editing house profile and systems
+- **Main page** (`MaintenancePlanPage.tsx`):
+  - Displays house profile summary
+  - Season selector + Generate Plan button
+  - Renders checklist with export to markdown file
+  - Edit mode for house profile
+- **Routing updates**:
+  - Added card in HomePage.tsx for maintenance plan mode
+  - Added route in App.tsx for `/maintenance-plan`
+- Key files: `frontend/src/pages/MaintenancePlanPage.tsx`, `frontend/src/components/HouseProfileEditor.tsx`
 
 **2026-02-05** - Week 5 Phase 1, 2 & 3 Complete
 - **Phase 1: LangGraph setup**

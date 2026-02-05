@@ -400,3 +400,21 @@ def load_house_profile(path: Path | None = None) -> HouseProfile:
         data = json.load(f)
 
     return HouseProfile(**data)
+
+
+def save_house_profile(profile: HouseProfile, path: Path | None = None) -> None:
+    """Save a house profile to a JSON file.
+
+    Args:
+        profile: The HouseProfile instance to save.
+        path: Path to save the JSON file. If None, uses the default location
+              (data/house_profile.json).
+
+    Example:
+        >>> profile = HouseProfile(name="Test", climate_zone=ClimateZone.COLD)
+        >>> save_house_profile(profile)
+    """
+    profile_path = path or DEFAULT_HOUSE_PROFILE_PATH
+
+    with open(profile_path, "w") as f:
+        json.dump(profile.model_dump(mode="json"), f, indent=2)

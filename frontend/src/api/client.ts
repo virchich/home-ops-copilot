@@ -1,4 +1,4 @@
-import type { AskResponse } from '../types';
+import type { AskResponse, HouseProfile, MaintenancePlanResponse, Season } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -42,4 +42,65 @@ export async function checkHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// =============================================================================
+// MAINTENANCE PLAN API
+// =============================================================================
+
+export async function generateMaintenancePlan(season: Season): Promise<MaintenancePlanResponse> {
+  const response = await fetch(`${API_URL}/maintenance-plan`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ season }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ApiError(
+      `Request failed with status ${response.status}`,
+      response.status,
+      errorBody.detail
+    );
+  }
+
+  return response.json();
+}
+
+export async function getHouseProfile(): Promise<HouseProfile> {
+  const response = await fetch(`${API_URL}/house-profile`);
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ApiError(
+      `Request failed with status ${response.status}`,
+      response.status,
+      errorBody.detail
+    );
+  }
+
+  return response.json();
+}
+
+export async function updateHouseProfile(profile: HouseProfile): Promise<HouseProfile> {
+  const response = await fetch(`${API_URL}/house-profile`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(profile),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ApiError(
+      `Request failed with status ${response.status}`,
+      response.status,
+      errorBody.detail
+    );
+  }
+
+  return response.json();
 }
