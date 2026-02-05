@@ -8,7 +8,7 @@
 
 **Phase**: Week 5 In Progress
 **Last Updated**: 2026-02-05
-**Current Focus**: Week 5 - Seasonal Maintenance Planner (LangGraph) - Phase 1 Complete
+**Current Focus**: Week 5 - Seasonal Maintenance Planner (LangGraph) - Phase 2 Complete
 
 ---
 
@@ -197,24 +197,23 @@ These are the first things to tackle in Week 1:
 
 <!-- Add entries in reverse chronological order -->
 
-**2026-02-05** - Week 5 Phase 1 Complete
-- **LangGraph setup**: Added `langgraph>=1.0.5` dependency
-  - Verified imports: `StateGraph`, `START`, `END` from `langgraph.graph`
-  - Tested minimal graph compilation and execution
-- **Workflow models**: Created `app/workflows/` package for LangGraph workflows
-  - `Season` enum: spring, summer, fall, winter
-  - `ClimateZone` enum: cold, mixed, hot_humid, hot_dry (IECC-based)
-  - `HouseType` enum: single_family, townhouse, condo, duplex
-  - `InstalledSystem` model: optional device details (model, manufacturer, fuel_type, install_year, notes)
-  - `HouseProfile` model: house metadata + installed systems dictionary
-  - `load_house_profile()` helper function for loading from JSON
-- **House profile**: Created `data/house_profile.json` with actual house data
-  - 7 systems: furnace, thermostat, HRV, water heater, water softener, humidifier, energy meter
-  - All installed in 2018, climate zone: cold
-  - Reuses `DeviceType` enum from RAG schema for consistency
-- **Decision**: LangGraph chosen over PydanticGraph
-- Key files: `app/workflows/models.py`, `data/house_profile.json`
-- Next: Phase 2 - Workflow Skeleton (state schema, minimal graph, API endpoint)
+**2026-02-05** - Week 5 Phase 1 & 2 Complete
+- **Phase 1: LangGraph setup**
+  - Added `langgraph>=1.0.5` dependency
+  - Created `app/workflows/` package for LangGraph workflows
+  - Models: `Season`, `ClimateZone`, `HouseType`, `InstalledSystem`, `HouseProfile`
+  - Created `data/house_profile.json` with 7 systems (all installed 2018)
+  - Decision: LangGraph chosen over PydanticGraph
+- **Phase 2: Workflow skeleton**
+  - Added workflow state models: `MaintenancePlanState`, `ChecklistItem`, `RetrievedChunk`
+  - Added API models: `MaintenancePlanRequest`, `MaintenancePlanResponse`
+  - Created `app/workflows/maintenance_planner.py` with LangGraph workflow
+  - Graph structure: START → retrieve_docs → generate_checklist → render_markdown → END
+  - All nodes are stubs (pass-through) - real logic in Phase 3
+  - Added `POST /maintenance-plan` endpoint to FastAPI
+  - Tested all 4 seasons via endpoint
+- Key files: `app/workflows/models.py`, `app/workflows/maintenance_planner.py`, `app/main.py`
+- Next: Phase 3 - Node Implementation (RAG retrieval, LLM generation, markdown rendering)
 
 **2026-01-27** - Week 4 Complete
 - **Section-aware chunking**: Added heading detection for ALL CAPS patterns in PDFs
