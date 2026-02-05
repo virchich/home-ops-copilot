@@ -701,6 +701,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "datasets" },
     { name = "fastapi" },
+    { name = "langgraph" },
     { name = "llama-index" },
     { name = "llama-index-embeddings-openai" },
     { name = "openai" },
@@ -722,6 +723,7 @@ dev = [
 requires-dist = [
     { name = "datasets", specifier = ">=4.4.2" },
     { name = "fastapi", specifier = ">=0.128.0" },
+    { name = "langgraph", specifier = ">=1.0.5" },
     { name = "llama-index", specifier = ">=0.14.12" },
     { name = "llama-index-embeddings-openai", specifier = ">=0.5.1" },
     { name = "openai", specifier = ">=2.14.0" },

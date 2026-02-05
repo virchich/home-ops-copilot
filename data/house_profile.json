@@ -1,0 +1,58 @@
+{
+  "name": "Main Residence",
+  "year_built": null,
+  "square_footage": null,
+  "climate_zone": "cold",
+  "house_type": "single_family",
+  "systems": {
+    "furnace": {
+      "model": "OM9GFRC",
+      "manufacturer": "Carrier",
+      "fuel_type": "gas",
+      "install_year": 2018,
+      "notes": "Located in basement"
+    },
+    "thermostat": {
+      "model": "Premium",
+      "manufacturer": "Ecobee",
+      "fuel_type": null,
+      "install_year": 2018,
+      "notes": "Smart thermostat on main floor"
+    },
+    "hrv": {
+      "model": "RNC5-HEX",
+      "manufacturer": "Lifebreath",
+      "fuel_type": null,
+      "install_year": 2018,
+      "notes": "Heat Recovery Ventilator in basement"
+    },
+    "water_heater": {
+      "model": "UG50",
+      "manufacturer": "Giant",
+      "fuel_type": "gas",
+      "install_year": 2018,
+      "notes": "50 gallon gas, basement"
+    },
+    "water_softener": {
+      "model": "5600",
+      "manufacturer": "Fleck",
+      "fuel_type": null,
+      "install_year": 2018,
+      "notes": "Fleck control valve, basement"
+    },
+    "humidifier": {
+      "model": "570",
+      "manufacturer": "GeneralAire",
+      "fuel_type": null,
+      "install_year": 2018,
+      "notes": "Bypass humidifier connected to furnace"
+    },
+    "energy_meter": {
+      "model": "EMC3P-P2P1",
+      "manufacturer": "Eaton",
+      "fuel_type": null,
+      "install_year": 2018,
+      "notes": "Three-phase energy meter, outside"
+    }
+  }
+}

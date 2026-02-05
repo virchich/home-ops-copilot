@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 4 Complete
-**Last Updated**: 2026-01-29
-**Current Focus**: Ready for Week 4.5 - UI Chat Interface (React + Node.js)
+**Phase**: Week 5 In Progress
+**Last Updated**: 2026-02-05
+**Current Focus**: Week 5 - Seasonal Maintenance Planner (LangGraph) - Phase 1 Complete
 
 ---
 
@@ -72,11 +72,11 @@
 
 **Goal**: Build a usable chat interface for the RAG system.
 
-- [ ] Set up React + Node.js frontend project (Vite or Next.js)
-- [ ] Chat interface with question input and response display
-- [ ] Display answer, citations (with source links), and risk level badge
-- [ ] Show retrieved chunks (expandable/collapsible)
-- [ ] Connect to existing FastAPI `/ask` endpoint
+- [x] Set up React + Node.js frontend project (Vite or Next.js)
+- [x] Chat interface with question input and response display
+- [x] Display answer, citations (with source links), and risk level badge
+- [x] Show retrieved chunks (expandable/collapsible)
+- [x] Connect to existing FastAPI `/ask` endpoint
 
 **Deliverable**: Can ask questions and see cited answers in a browser.
 
@@ -196,6 +196,25 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-02-05** - Week 5 Phase 1 Complete
+- **LangGraph setup**: Added `langgraph>=1.0.5` dependency
+  - Verified imports: `StateGraph`, `START`, `END` from `langgraph.graph`
+  - Tested minimal graph compilation and execution
+- **Workflow models**: Created `app/workflows/` package for LangGraph workflows
+  - `Season` enum: spring, summer, fall, winter
+  - `ClimateZone` enum: cold, mixed, hot_humid, hot_dry (IECC-based)
+  - `HouseType` enum: single_family, townhouse, condo, duplex
+  - `InstalledSystem` model: optional device details (model, manufacturer, fuel_type, install_year, notes)
+  - `HouseProfile` model: house metadata + installed systems dictionary
+  - `load_house_profile()` helper function for loading from JSON
+- **House profile**: Created `data/house_profile.json` with actual house data
+  - 7 systems: furnace, thermostat, HRV, water heater, water softener, humidifier, energy meter
+  - All installed in 2018, climate zone: cold
+  - Reuses `DeviceType` enum from RAG schema for consistency
+- **Decision**: LangGraph chosen over PydanticGraph
+- Key files: `app/workflows/models.py`, `data/house_profile.json`
+- Next: Phase 2 - Workflow Skeleton (state schema, minimal graph, API endpoint)
 
 **2026-01-27** - Week 4 Complete
 - **Section-aware chunking**: Added heading detection for ALL CAPS patterns in PDFs
