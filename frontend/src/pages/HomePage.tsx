@@ -65,9 +65,7 @@ export function HomePage() {
         {/* Mode cards grid */}
         <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
           {modes.map((mode) => (
-            <div key={mode.id} className="w-full sm:w-80">
-              <ModeCardComponent mode={mode} />
-            </div>
+            <ModeCardComponent key={mode.id} mode={mode} />
           ))}
         </div>
       </main>
@@ -85,7 +83,7 @@ export function HomePage() {
 function ModeCardComponent({ mode }: { mode: ModeCard }) {
   if (!mode.available) {
     return (
-      <div className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 opacity-60 cursor-not-allowed">
+      <div className="relative w-full sm:w-80 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 opacity-60 cursor-not-allowed">
         <div className="absolute top-3 right-3 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs rounded-full">
           Coming soon
         </div>
@@ -99,7 +97,7 @@ function ModeCardComponent({ mode }: { mode: ModeCard }) {
   return (
     <Link
       to={mode.path}
-      className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-lg transition-all"
+      className="group w-full sm:w-80 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-lg transition-all"
     >
       <div className="text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
         {mode.icon}
