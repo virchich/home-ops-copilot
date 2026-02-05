@@ -17,11 +17,11 @@
 - [x] **2.2** Build minimal LangGraph workflow — Empty nodes wired together, passing state through
 - [x] **2.3** Add `/maintenance-plan` endpoint — FastAPI route that invokes the workflow
 
-## Phase 3: Node Implementation
+## Phase 3: Node Implementation ✅
 
-- [ ] **3.1** Retrieval node — Query index filtered by season + relevant device types from house profile
-- [ ] **3.2** Checklist generation node — LLM call with strict JSON output (instructor) for structured checklist items
-- [ ] **3.3** Markdown rendering node — Convert checklist JSON to Apple Notes-friendly markdown
+- [x] **3.1** Retrieval node — Query index filtered by season + relevant device types from house profile
+- [x] **3.2** Checklist generation node — LLM call with strict JSON output (instructor) for structured checklist items
+- [x] **3.3** Markdown rendering node — Convert checklist JSON to Apple Notes-friendly markdown
 
 ## Phase 4: Polish & Test
 
@@ -33,18 +33,21 @@
 
 ## Session Notes
 
-**2026-02-05** - Phase 1 & 2 Complete
+**2026-02-05** - Phase 1, 2 & 3 Complete
 - **Phase 1**: Added LangGraph 1.0.5, created `app/workflows/` package
   - Models: `Season`, `ClimateZone`, `HouseType`, `InstalledSystem`, `HouseProfile`
   - Created `data/house_profile.json` with 7 systems (all installed 2018)
 - **Phase 2**: Built workflow skeleton
   - State models: `MaintenancePlanState`, `ChecklistItem`, `RetrievedChunk`
   - API models: `MaintenancePlanRequest`, `MaintenancePlanResponse`
-  - Created `app/workflows/maintenance_planner.py`:
-    - Graph: START → retrieve_docs → generate_checklist → render_markdown → END
-    - All nodes are stubs returning placeholder data
+  - Created `app/workflows/maintenance_planner.py` with stub nodes
   - Added `POST /maintenance-plan` endpoint in `app/main.py`
-  - Tested all 4 seasons successfully
+- **Phase 3**: Implemented real node logic
+  - Retrieval: Season-specific queries (`SEASON_QUERY_TEMPLATES`), device filtering
+  - Extended `retrieve()` to accept custom `device_types` parameter
+  - Generation: LLM with instructor, `ChecklistResponse` model, detailed system prompt
+  - Generates 15-25 items with priorities, frequencies, notes, source citations
+  - Render: Groups by priority (High/Medium/Low), checkboxes, Apple Notes-friendly
 - All tests pass (195), linting/mypy clean
 
 ---

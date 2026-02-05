@@ -8,7 +8,7 @@
 
 **Phase**: Week 5 In Progress
 **Last Updated**: 2026-02-05
-**Current Focus**: Week 5 - Seasonal Maintenance Planner (LangGraph) - Phase 2 Complete
+**Current Focus**: Week 5 - Seasonal Maintenance Planner (LangGraph) - Phase 3 Complete
 
 ---
 
@@ -197,7 +197,7 @@ These are the first things to tackle in Week 1:
 
 <!-- Add entries in reverse chronological order -->
 
-**2026-02-05** - Week 5 Phase 1 & 2 Complete
+**2026-02-05** - Week 5 Phase 1, 2 & 3 Complete
 - **Phase 1: LangGraph setup**
   - Added `langgraph>=1.0.5` dependency
   - Created `app/workflows/` package for LangGraph workflows
@@ -209,11 +209,17 @@ These are the first things to tackle in Week 1:
   - Added API models: `MaintenancePlanRequest`, `MaintenancePlanResponse`
   - Created `app/workflows/maintenance_planner.py` with LangGraph workflow
   - Graph structure: START → retrieve_docs → generate_checklist → render_markdown → END
-  - All nodes are stubs (pass-through) - real logic in Phase 3
   - Added `POST /maintenance-plan` endpoint to FastAPI
-  - Tested all 4 seasons via endpoint
-- Key files: `app/workflows/models.py`, `app/workflows/maintenance_planner.py`, `app/main.py`
-- Next: Phase 3 - Node Implementation (RAG retrieval, LLM generation, markdown rendering)
+- **Phase 3: Node implementation**
+  - Retrieval node: Season-specific queries, filters by house profile device types
+  - Extended `retrieve()` in retriever.py to accept custom `device_types` parameter
+  - Generation node: LLM call with instructor for structured `ChecklistItem` output
+  - Added `ChecklistResponse` wrapper model and `CHECKLIST_SYSTEM_PROMPT`
+  - Generates 15-25 detailed checklist items with priorities, frequencies, notes, sources
+  - Render node: Apple Notes-friendly markdown grouped by priority (High/Medium/Low)
+  - Checkboxes, inline metadata, source citations at bottom
+- Key files: `app/workflows/maintenance_planner.py`, `app/rag/retriever.py`
+- Next: Phase 4 - Polish & Test (season-specific logic, end-to-end testing, eval suite)
 
 **2026-01-27** - Week 4 Complete
 - **Section-aware chunking**: Added heading detection for ALL CAPS patterns in PDFs
