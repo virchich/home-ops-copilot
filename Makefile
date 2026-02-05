@@ -1,4 +1,4 @@
-.PHONY: install check test test-unit test-integration eval eval-quick run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
+.PHONY: install check test test-unit test-integration eval eval-quick eval-maintenance run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
 
 # Default target
 help:
@@ -10,6 +10,7 @@ help:
 	@echo "  make test-integration - Run integration tests only (requires index)"
 	@echo "  make eval             - Run evaluation on golden questions"
 	@echo "  make eval-quick       - Run evaluation on 5 questions (quick test)"
+	@echo "  make eval-maintenance - Run maintenance plan evaluation (all seasons)"
 	@echo "  make run              - Start FastAPI development server"
 	@echo "  make ingest           - Run document ingestion (uses existing index if available)"
 	@echo "  make ingest-rebuild   - Force rebuild the vector index from scratch"
@@ -52,6 +53,10 @@ eval:
 # Run quick evaluation (5 questions)
 eval-quick:
 	uv run python -m eval.run_eval --limit 5
+
+# Run maintenance plan evaluation (all 4 seasons)
+eval-maintenance:
+	uv run python -m eval.run_maintenance_eval
 
 # Start FastAPI development server
 run:

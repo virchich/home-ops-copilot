@@ -1,0 +1,68 @@
+{
+  "description": "Golden examples for maintenance plan evaluation. These define quality criteria for each season.",
+  "version": "1.0",
+  "seasons": {
+    "winter": {
+      "description": "Winter focuses on heating systems, freeze prevention, indoor air quality",
+      "expected_device_coverage": ["furnace", "hrv", "humidifier", "water_heater"],
+      "expected_themes": [
+        "filter replacement",
+        "heating efficiency",
+        "condensation/humidity",
+        "professional inspection",
+        "safety checks"
+      ],
+      "min_items": 10,
+      "min_high_priority": 5,
+      "expected_sources": ["Furnace-OM9GFRC-02.pdf", "69-RNC5-HEX-Owners-11-18-16.pdf"]
+    },
+    "spring": {
+      "description": "Spring focuses on post-winter inspection, transition to cooling, cleaning",
+      "expected_device_coverage": ["furnace", "hrv", "humidifier"],
+      "expected_themes": [
+        "post-winter inspection",
+        "cleaning",
+        "filter replacement",
+        "damage check",
+        "ventilation"
+      ],
+      "min_items": 8,
+      "min_high_priority": 3,
+      "expected_sources": ["Furnace-OM9GFRC-02.pdf", "69-RNC5-HEX-Owners-11-18-16.pdf"]
+    },
+    "summer": {
+      "description": "Summer focuses on cooling, airflow, humidity control",
+      "expected_device_coverage": ["hrv", "thermostat"],
+      "expected_themes": [
+        "cooling efficiency",
+        "filter maintenance",
+        "humidity adjustment",
+        "airflow"
+      ],
+      "min_items": 5,
+      "min_high_priority": 2,
+      "expected_sources": []
+    },
+    "fall": {
+      "description": "Fall focuses on winterization prep, heating system checks before cold weather",
+      "expected_device_coverage": ["furnace", "hrv", "water_heater"],
+      "expected_themes": [
+        "winterization",
+        "furnace inspection",
+        "professional tune-up",
+        "safety controls",
+        "CO detector"
+      ],
+      "min_items": 10,
+      "min_high_priority": 5,
+      "expected_sources": ["Furnace-OM9GFRC-02.pdf"]
+    }
+  },
+  "quality_criteria": {
+    "has_priorities": "All plans should have items with priority levels",
+    "cites_sources": "At least 50% of items should cite source documents",
+    "has_markdown": "Output should include valid markdown with checkboxes",
+    "reasonable_count": "Plans should have between 5-30 items",
+    "device_specific": "Items should specify which device they relate to"
+  }
+}

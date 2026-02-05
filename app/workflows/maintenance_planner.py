@@ -24,16 +24,47 @@ from app.workflows.models import ChecklistItem, MaintenancePlanState, RetrievedC
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# SEASON-SPECIFIC QUERY TEMPLATES
+# SEASON-SPECIFIC CONFIGURATION
 # =============================================================================
-# These templates generate retrieval queries focused on seasonal tasks.
-# Each device type gets a season-appropriate query.
+# These templates and contexts customize the workflow for each season.
 
 SEASON_QUERY_TEMPLATES: dict[Season, str] = {
-    Season.SPRING: "{device} spring maintenance checklist inspection cleaning",
-    Season.SUMMER: "{device} summer maintenance cooling efficiency check",
-    Season.FALL: "{device} fall winterization preparation maintenance checklist",
-    Season.WINTER: "{device} winter maintenance heating efficiency check",
+    Season.SPRING: "{device} spring maintenance inspection cleaning post-winter check",
+    Season.SUMMER: "{device} summer maintenance cooling AC efficiency filter airflow",
+    Season.FALL: "{device} fall winterization preparation heating furnace checklist",
+    Season.WINTER: "{device} winter maintenance heating efficiency filter condensate",
+}
+
+# Season-specific context added to the LLM prompt
+# This helps the LLM prioritize the right tasks for each season
+SEASON_CONTEXT: dict[Season, str] = {
+    Season.SPRING: """SPRING MAINTENANCE FOCUS:
+- Post-winter inspection: Check for winter damage, leaks, corrosion
+- Transition from heating to cooling: Clean/replace filters, inspect AC components
+- Outdoor systems: Resume outdoor maintenance, check exterior vents
+- Air quality: Clean HRV/ventilation after closed-up winter months
+- Moisture: Check for condensation damage, mold from winter humidity""",
+
+    Season.SUMMER: """SUMMER MAINTENANCE FOCUS:
+- Cooling efficiency: AC maintenance, clean coils, check refrigerant
+- Airflow: Replace filters more frequently due to dust/pollen
+- Humidity control: Adjust HRV settings for summer humidity levels
+- Energy efficiency: Check seals, insulation, reduce cooling load
+- Pest prevention: Inspect vents and openings for pests""",
+
+    Season.FALL: """FALL MAINTENANCE FOCUS:
+- Winterization prep: Prepare heating systems before cold weather
+- Furnace: Schedule professional inspection, replace filters
+- Water systems: Protect from freezing, check water heater
+- Ventilation: Clean HRV before heating season increases indoor air recirculation
+- Safety: Test CO detectors, check venting before furnace runs continuously""",
+
+    Season.WINTER: """WINTER MAINTENANCE FOCUS:
+- Heating efficiency: Monitor furnace operation, replace filters monthly
+- Freeze prevention: Protect pipes, check water heater
+- Indoor air quality: HRV maintenance critical when house is sealed up
+- Humidity balance: Adjust humidifier/HRV to prevent condensation on windows
+- Safety checks: Ensure venting is clear, CO detectors working""",
 }
 
 # =============================================================================
@@ -195,8 +226,13 @@ def generate_checklist(state: MaintenancePlanState) -> dict:
     # Build list of installed systems for context
     systems_list = ", ".join(state.house_profile.systems.keys())
 
-    # Build the user message
+    # Get season-specific guidance
+    season_context = SEASON_CONTEXT.get(state.season, "")
+
+    # Build the user message with season-specific context
     user_message = f"""Season: {state.season.value.upper()}
+
+{season_context}
 
 Installed systems in this house: {systems_list}
 
@@ -204,7 +240,7 @@ Documentation excerpts:
 {context}
 
 Based on the documentation above, generate a {state.season.value} maintenance checklist for this house.
-Focus on tasks that are relevant for {state.season.value} and the installed systems."""
+Focus on tasks that are relevant for the {state.season.value} priorities listed above and the installed systems."""
 
     # Call LLM with structured output
     # Use higher max_completion_tokens since checklist generation needs more space
