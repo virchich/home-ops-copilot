@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 5 Complete + UI Enhancement
-**Last Updated**: 2026-02-05
-**Current Focus**: Added Maintenance Plan UI page to frontend
+**Phase**: Week 6 Complete
+**Last Updated**: 2026-02-10
+**Current Focus**: Troubleshooting tree workflow with safety guardrails
 
 ---
 
@@ -98,11 +98,15 @@
 
 **Goal**: Guided troubleshooting with safety guardrails.
 
-- [ ] Intake: ask 3–6 targeted questions (symptom + constraints)
-- [ ] Retrieve manuals → produce diagnostic steps → STOP rules
-- [ ] High-risk rules: gas/electrical → safety-first, recommend pro
+- [x] Intake: hybrid form (device + symptom) → LLM follow-up questions (2-3)
+- [x] Retrieve manuals → produce diagnostic steps → STOP rules
+- [x] High-risk rules: gas/electrical/CO/structural → safety-first, recommend pro
+- [x] Two-invocation LangGraph workflow (intake graph + diagnosis graph)
+- [x] Two-layer safety: deterministic keyword matching + LLM risk assessment
+- [x] Frontend: stepper/wizard with intake form, follow-up questions, diagnosis display
+- [x] Evaluation suite with 6 golden scenarios
 
-**Deliverable**: One full troubleshooting flow end-to-end.
+**Deliverable**: One full troubleshooting flow end-to-end. ✅
 
 ---
 
@@ -196,6 +200,37 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-02-10** - Week 6: Troubleshooting Tree Workflow
+- **Architecture**: Two-invocation approach (intake graph + diagnosis graph) with server-side session storage
+  - Invocation 1 (intake): intake_parse -> retrieve_docs -> assess_risk -+-> generate_followups / safety_stop
+  - Invocation 2 (diagnosis): generate_diagnosis -> render_output
+  - In-memory session dict between invocations (adequate for local single-user)
+- **Safety model (two layers)**:
+  - Layer 1: Deterministic keyword matching (`SAFETY_STOP_PATTERNS`) for gas, CO, electrical, structural, valve issues
+  - Layer 2: LLM risk assessment via instructor (for nuanced cases that keywords miss)
+  - If either layer triggers HIGH + safety -> workflow stops, no DIY steps generated
+- **Backend files created**:
+  - `app/workflows/troubleshooter_models.py` - All Pydantic models (FollowupQuestion, DiagnosticStep, TroubleshootingState, API models)
+  - `app/workflows/troubleshooter.py` - LangGraph workflow (5-node intake graph, 2-node diagnosis graph, safety patterns)
+  - `tests/test_troubleshooter.py` - 40+ tests (model validation, safety patterns, graph compilation, node functions, integration)
+- **API endpoints** added to `app/main.py`:
+  - `POST /troubleshoot/start` - Runs intake graph, returns follow-ups or safety stop
+  - `POST /troubleshoot/diagnose` - Runs diagnosis graph with follow-up answers
+- **Frontend**:
+  - `IntakeForm.tsx` - Device selector (from house profile) + symptom + urgency + context
+  - `FollowupQuestions.tsx` - Renders yes_no buttons, multiple_choice radios, free_text inputs
+  - `DiagnosticStepsDisplay.tsx` - Numbered step cards with risk badges, sources, copy/export
+  - `SafetyWarning.tsx` - Red warning banner with professional recommendation
+  - `TroubleshootPage.tsx` - Stepper/wizard with 3 phases (intake -> followup/safety -> diagnosis)
+  - Added troubleshoot card to HomePage, route in App.tsx
+- **Evaluation**: 6 golden scenarios in `eval/troubleshooting_golden.json`
+  - 3 safety-stop scenarios (gas, electrical, CO)
+  - 3 diagnosis scenarios (furnace no heat, water heater, HRV noise)
+  - `eval/run_troubleshooting_eval.py` with rule-based checks
+  - `make eval-troubleshoot` Makefile target
+- Key files: `app/workflows/troubleshooter.py`, `app/workflows/troubleshooter_models.py`, `frontend/src/pages/TroubleshootPage.tsx`
+- **Week 6 Complete!** Ready for Week 7 (Parts & consumables helper)
 
 **2026-02-05** - Maintenance Plan UI
 - Added dedicated `/maintenance-plan` page to React frontend

@@ -11,6 +11,7 @@ help:
 	@echo "  make eval             - Run evaluation on golden questions"
 	@echo "  make eval-quick       - Run evaluation on 5 questions (quick test)"
 	@echo "  make eval-maintenance - Run maintenance plan evaluation (all seasons)"
+	@echo "  make eval-troubleshoot - Run troubleshooting workflow evaluation"
 	@echo "  make run              - Start FastAPI development server"
 	@echo "  make ingest           - Run document ingestion (uses existing index if available)"
 	@echo "  make ingest-rebuild   - Force rebuild the vector index from scratch"
@@ -57,6 +58,10 @@ eval-quick:
 # Run maintenance plan evaluation (all 4 seasons)
 eval-maintenance:
 	uv run python -m eval.run_maintenance_eval
+
+# Run troubleshooting workflow evaluation (6 golden scenarios)
+eval-troubleshoot:
+	uv run python -m eval.run_troubleshooting_eval
 
 # Start FastAPI development server
 run:
