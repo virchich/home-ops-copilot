@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.rag.models import RiskLevel
 from app.rag.retriever import retrieve
+from app.workflows.helpers import format_chunks_as_context, format_device_details
 from app.workflows.models import RetrievedChunk
 from app.workflows.troubleshooter_models import (
     DiagnosisResponse,
@@ -191,35 +192,8 @@ def get_llm_client() -> instructor.Instructor:
     return instructor.from_openai(OpenAI(api_key=settings.openai_api_key))
 
 
-def format_chunks_as_context(chunks: list[RetrievedChunk]) -> str:
-    """Format retrieved chunks as numbered context for LLM prompts."""
-    if not chunks:
-        return "No documentation available."
-    parts = []
-    for i, chunk in enumerate(chunks, 1):
-        parts.append(
-            f"[Source {i}: {chunk.source} ({chunk.device_type or 'general'})]\n{chunk.text}"
-        )
-    return "\n\n---\n\n".join(parts)
-
-
-def format_device_details(state: TroubleshootingState) -> str:
-    """Extract device details from the house profile for LLM context."""
-    if not state.house_profile or not state.device_type:
-        return ""
-    system_details = state.house_profile.systems.get(state.device_type)
-    if not system_details:
-        return ""
-    parts = []
-    if system_details.manufacturer:
-        parts.append(f"Manufacturer: {system_details.manufacturer}")
-    if system_details.model:
-        parts.append(f"Model: {system_details.model}")
-    if system_details.fuel_type:
-        parts.append(f"Fuel: {system_details.fuel_type}")
-    if system_details.install_year:
-        parts.append(f"Installed: {system_details.install_year}")
-    return "\n".join(parts)
+# format_chunks_as_context and format_device_details are imported from
+# app.workflows.helpers (shared across workflows)
 
 
 # =============================================================================
@@ -515,7 +489,7 @@ def generate_followups(state: TroubleshootingState) -> dict:
         Dict with followup_questions and preliminary_assessment.
     """
     context = format_chunks_as_context(state.retrieved_chunks)
-    systems_info = format_device_details(state)
+    systems_info = format_device_details(state.house_profile, state.device_type)
 
     user_message = f"""Device type: {state.device_type}
 Urgency: {state.urgency or "medium"}
@@ -600,7 +574,7 @@ def generate_diagnosis(state: TroubleshootingState) -> dict:
         Dict with diagnosis fields.
     """
     context = format_chunks_as_context(state.retrieved_chunks)
-    systems_info = format_device_details(state)
+    systems_info = format_device_details(state.house_profile, state.device_type)
 
     # Format follow-up Q&A
     qa_parts = []

@@ -42,10 +42,12 @@ class TestMaintenancePlannerIntegration:
         self, planner: CompiledStateGraph, house_profile: HouseProfile
     ) -> None:
         """Winter plan should generate maintenance items."""
-        result = planner.invoke({
-            "house_profile": house_profile,
-            "season": Season.WINTER,
-        })
+        result = planner.invoke(
+            {
+                "house_profile": house_profile,
+                "season": Season.WINTER,
+            }
+        )
 
         items = result.get("checklist_items", [])
         assert len(items) > 0, "Should generate at least some checklist items"
@@ -56,10 +58,12 @@ class TestMaintenancePlannerIntegration:
         self, planner: CompiledStateGraph, house_profile: HouseProfile
     ) -> None:
         """Generated plan should include items of different priorities."""
-        result = planner.invoke({
-            "house_profile": house_profile,
-            "season": Season.FALL,
-        })
+        result = planner.invoke(
+            {
+                "house_profile": house_profile,
+                "season": Season.FALL,
+            }
+        )
 
         items = result.get("checklist_items", [])
         priorities = {item.priority for item in items}
@@ -72,10 +76,12 @@ class TestMaintenancePlannerIntegration:
         self, planner: CompiledStateGraph, house_profile: HouseProfile
     ) -> None:
         """Generated items should cite source documents."""
-        result = planner.invoke({
-            "house_profile": house_profile,
-            "season": Season.SPRING,
-        })
+        result = planner.invoke(
+            {
+                "house_profile": house_profile,
+                "season": Season.SPRING,
+            }
+        )
 
         items = result.get("checklist_items", [])
         items_with_sources = [item for item in items if item.source_doc]
@@ -90,10 +96,12 @@ class TestMaintenancePlannerIntegration:
         self, planner: CompiledStateGraph, house_profile: HouseProfile
     ) -> None:
         """Workflow should produce markdown output."""
-        result = planner.invoke({
-            "house_profile": house_profile,
-            "season": Season.SUMMER,
-        })
+        result = planner.invoke(
+            {
+                "house_profile": house_profile,
+                "season": Season.SUMMER,
+            }
+        )
 
         markdown = result.get("markdown_output", "")
         assert markdown, "Should generate markdown output"

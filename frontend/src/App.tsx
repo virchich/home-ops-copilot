@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage';
 import { ChatPage } from './pages/ChatPage';
 import { MaintenancePlanPage } from './pages/MaintenancePlanPage';
 import { TroubleshootPage } from './pages/TroubleshootPage';
+import { PartsHelperPage } from './pages/PartsHelperPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/maintenance-plan" element={<MaintenancePlanPage />} />
             <Route path="/troubleshoot" element={<TroubleshootPage />} />
+            <Route path="/parts" element={<PartsHelperPage />} />
           </Routes>
         </BrowserRouter>
       </ChatProvider>

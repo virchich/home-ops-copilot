@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 6 Complete
+**Phase**: Week 7 Complete
 **Last Updated**: 2026-02-10
-**Current Focus**: Troubleshooting tree workflow with safety guardrails
+**Current Focus**: Parts & consumables helper workflow
 
 ---
 
@@ -114,11 +114,15 @@
 
 **Goal**: Help identify correct replacement parts.
 
-- [ ] Extract filter sizes/part numbers/intervals from docs (+ your notes)
-- [ ] Output: exact item + where it's used + replacement cadence
-- [ ] Uncertainty behavior: missing model → ask follow-ups
+- [x] Extract filter sizes/part numbers/intervals from docs (+ your notes)
+- [x] Output: exact item + where it's used + replacement cadence
+- [x] Uncertainty behavior: missing model → ask follow-ups
+- [x] Single-invocation LangGraph workflow (parse → retrieve → generate → render)
+- [x] Confidence levels: CONFIRMED / LIKELY / UNCERTAIN
+- [x] Frontend: query form with device filter + results display with confidence badges
+- [x] Evaluation suite with 8 golden scenarios
 
-**Deliverable**: "Which filter do I buy?" works reliably.
+**Deliverable**: "Which filter do I buy?" works reliably. ✅
 
 ---
 
@@ -200,6 +204,38 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-02-10** - Week 7: Parts & Consumables Helper
+- **Architecture**: Single-invocation LangGraph workflow (no session storage needed)
+  - Graph: START → parse_query → retrieve_docs → generate_parts_list → render_markdown → END
+  - When info is incomplete, response includes `clarification_questions` alongside whatever parts _can_ be identified
+  - Users refine by re-querying with more detail (no session state between invocations)
+- **Shared helpers extraction**:
+  - Created `app/workflows/helpers.py` with `format_chunks_as_context()` and `format_device_details()`
+  - Generalized `format_device_details()` to accept `(house_profile, device_type)` instead of `TroubleshootingState`
+  - Updated troubleshooter imports — all existing tests still pass
+- **Backend files created**:
+  - `app/workflows/parts_helper_models.py` — All Pydantic models (ConfidenceLevel, PartRecommendation, ClarificationQuestion, PartsLookupResponse, PartsHelperState, API models)
+  - `app/workflows/parts_helper.py` — LangGraph workflow (4 nodes: parse_query, retrieve_docs, generate_parts_list, render_markdown)
+  - `app/workflows/helpers.py` — Shared helper functions extracted from troubleshooter
+  - `tests/test_parts_helper.py` — 40 unit tests (model validation, helpers, graph compilation, node functions, render)
+- **Confidence levels**:
+  - CONFIRMED: Part found in docs with part number or explicit reference (requires source_doc)
+  - LIKELY: Inferred from documentation (device specs suggest this part)
+  - UNCERTAIN: General knowledge, not in docs (must NOT have part_number)
+- **API endpoint**: `POST /parts/lookup` — Accepts query + optional device_type, returns parts with confidence + clarification questions
+- **Frontend**:
+  - `ConfidenceBadge.tsx` — Green (confirmed), yellow (likely), gray (uncertain) badges
+  - `PartsQueryForm.tsx` — Free-text query + device filter buttons + quick-query chips ("All filters", "All consumables")
+  - `PartsResultsDisplay.tsx` — Part cards grouped by device, confidence badges, clarification questions section, copy/export
+  - `PartsHelperPage.tsx` — Simple query → results page (idle → loading → results states)
+  - Added Parts Helper card to HomePage (wrench icon), `/parts` route in App.tsx
+- **Evaluation**: 8 golden scenarios in `eval/parts_golden.json`
+  - furnace_filter, hrv_filter, humidifier_pad, all_filters, water_softener_salt, unknown_device, vague_query, specific_model
+  - `eval/run_parts_eval.py` with rule-based checks (min parts, confidence constraints, source citations, part numbers)
+  - `make eval-parts` Makefile target
+- Key files: `app/workflows/parts_helper.py`, `app/workflows/parts_helper_models.py`, `frontend/src/pages/PartsHelperPage.tsx`
+- **Week 7 Complete!** Ready for Week 8 (Observability)
 
 **2026-02-10** - Week 6: Troubleshooting Tree Workflow
 - **Architecture**: Two-invocation approach (intake graph + diagnosis graph) with server-side session storage

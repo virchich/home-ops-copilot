@@ -18,6 +18,11 @@ from app.workflows.models import (
     load_house_profile,
     save_house_profile,
 )
+from app.workflows.parts_helper import create_parts_helper
+from app.workflows.parts_helper_models import (
+    PartsLookupAPIResponse,
+    PartsLookupRequest,
+)
 from app.workflows.troubleshooter import create_diagnosis_workflow, create_intake_workflow
 from app.workflows.troubleshooter_models import (
     TroubleshootDiagnoseRequest,
@@ -33,6 +38,17 @@ app = FastAPI(
     description="RAG-powered assistant for home maintenance, troubleshooting, and parts management",
     version="0.1.0",
 )
+
+# =============================================================================
+# PRE-COMPILED WORKFLOWS
+# =============================================================================
+# LangGraph compilation is deterministic and stateless — the compiled graph is
+# reusable across requests. Compiling once at module level avoids redundant work.
+
+_maintenance_planner = create_maintenance_planner()
+_parts_helper = create_parts_helper()
+_intake_workflow = create_intake_workflow()
+_diagnosis_workflow = create_diagnosis_workflow()
 
 # CORS middleware for frontend development
 app.add_middleware(
@@ -121,9 +137,8 @@ def generate_maintenance_plan(request: MaintenancePlanRequest) -> MaintenancePla
             detail="House profile not found. Create data/house_profile.json first.",
         ) from err
 
-    # Create and run the workflow
-    planner = create_maintenance_planner()
-    result = planner.invoke(
+    # Run the workflow
+    result = _maintenance_planner.invoke(
         {
             "house_profile": profile,
             "season": request.season,
@@ -177,6 +192,63 @@ def update_house_profile(profile: HouseProfile) -> HouseProfile:
 
 
 # =============================================================================
+# PARTS LOOKUP ENDPOINT
+# =============================================================================
+
+
+@app.post("/parts/lookup", response_model=PartsLookupAPIResponse)
+def parts_lookup(request: PartsLookupRequest) -> PartsLookupAPIResponse:
+    """
+    Look up replacement parts and consumables.
+
+    Takes a query (e.g., "What filter for the furnace?") and optionally
+    a device type. Returns identified parts with confidence levels,
+    plus clarification questions if information is incomplete.
+
+    No session storage needed — users refine by re-querying with more detail.
+    """
+    if not settings.openai_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
+        )
+
+    # Load house profile
+    try:
+        profile = load_house_profile()
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=404,
+            detail="House profile not found. Create data/house_profile.json first.",
+        ) from err
+
+    # Run parts helper workflow
+    result = _parts_helper.invoke(
+        {
+            "query": request.query,
+            "device_type": request.device_type,
+            "house_profile": profile,
+        }
+    )
+
+    # Check for errors
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    # Extract unique source documents
+    sources_used = sorted({part.source_doc for part in result.get("parts", []) if part.source_doc})
+
+    return PartsLookupAPIResponse(
+        parts=result.get("parts", []),
+        clarification_questions=result.get("clarification_questions", []),
+        summary=result.get("summary", ""),
+        markdown=result.get("markdown_output", ""),
+        sources_used=sources_used,
+        has_gaps=bool(result.get("clarification_questions")),
+    )
+
+
+# =============================================================================
 # TROUBLESHOOTING ENDPOINTS
 # =============================================================================
 # In-memory session storage for troubleshooting state between invocations.
@@ -193,7 +265,8 @@ def _evict_expired_sessions() -> None:
     """Remove sessions older than _SESSION_TTL_SECONDS."""
     now = time.monotonic()
     expired = [
-        sid for sid, (created_at, _) in _troubleshoot_sessions.items()
+        sid
+        for sid, (created_at, _) in _troubleshoot_sessions.items()
         if now - created_at > _SESSION_TTL_SECONDS
     ]
     for sid in expired:
@@ -230,8 +303,7 @@ def troubleshoot_start(request: TroubleshootStartRequest) -> TroubleshootStartRe
     session_id = str(uuid.uuid4())
 
     # Run intake workflow
-    intake_workflow = create_intake_workflow()
-    result = intake_workflow.invoke(
+    result = _intake_workflow.invoke(
         {
             "device_type": request.device_type,
             "symptom": request.symptom,
@@ -309,8 +381,7 @@ def troubleshoot_diagnose(request: TroubleshootDiagnoseRequest) -> TroubleshootD
     state_dict["followup_answers"] = [a.model_dump() for a in request.answers]
 
     # Run diagnosis workflow
-    diagnosis_workflow = create_diagnosis_workflow()
-    result = diagnosis_workflow.invoke(state_dict)
+    result = _diagnosis_workflow.invoke(state_dict)
 
     # Check for errors
     if result.get("error"):

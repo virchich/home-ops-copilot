@@ -48,6 +48,18 @@ const modes: ModeCard[] = [
     path: '/troubleshoot',
     available: true,
   },
+  {
+    id: 'parts',
+    title: 'Parts Helper',
+    description: 'Find replacement parts, filters, and consumables for your home systems.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.42 15.17l-5.1-5.1a2.5 2.5 0 010-3.54l.7-.7a2.5 2.5 0 013.54 0l5.1 5.1m-3.54 3.54l5.1 5.1a2.5 2.5 0 003.54 0l.7-.7a2.5 2.5 0 000-3.54l-5.1-5.1m-3.54 3.54l3.54-3.54" />
+      </svg>
+    ),
+    path: '/parts',
+    available: true,
+  },
 ];
 
 export function HomePage() {

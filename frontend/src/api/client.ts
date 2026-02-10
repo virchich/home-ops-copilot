@@ -2,6 +2,8 @@ import type {
   AskResponse,
   HouseProfile,
   MaintenancePlanResponse,
+  PartsLookupRequest,
+  PartsLookupResponse,
   Season,
   TroubleshootStartRequest,
   TroubleshootStartResponse,
@@ -145,6 +147,33 @@ export async function submitDiagnosis(
   request: TroubleshootDiagnoseRequest
 ): Promise<TroubleshootDiagnoseResponse> {
   const response = await fetch(`${API_URL}/troubleshoot/diagnose`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ApiError(
+      `Request failed with status ${response.status}`,
+      response.status,
+      errorBody.detail
+    );
+  }
+
+  return response.json();
+}
+
+// =============================================================================
+// PARTS LOOKUP API
+// =============================================================================
+
+export async function lookupParts(
+  request: PartsLookupRequest
+): Promise<PartsLookupResponse> {
+  const response = await fetch(`${API_URL}/parts/lookup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
