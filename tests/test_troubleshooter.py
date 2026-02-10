@@ -210,6 +210,47 @@ class TestModels:
         assert req.device_type == "furnace"
         assert req.urgency == "medium"  # Default
 
+    def test_start_request_rejects_invalid_urgency(self) -> None:
+        """TroubleshootStartRequest should reject invalid urgency values."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            TroubleshootStartRequest(
+                device_type="furnace",
+                symptom="No heat",
+                urgency="super_urgent",
+            )
+
+    def test_start_request_rejects_long_symptom(self) -> None:
+        """TroubleshootStartRequest should reject symptom over max_length."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            TroubleshootStartRequest(
+                device_type="furnace",
+                symptom="x" * 2001,
+            )
+
+    def test_start_request_rejects_long_device_type(self) -> None:
+        """TroubleshootStartRequest should reject device_type over max_length."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            TroubleshootStartRequest(
+                device_type="x" * 101,
+                symptom="No heat",
+            )
+
+    def test_start_request_accepts_max_length(self) -> None:
+        """TroubleshootStartRequest should accept fields at exactly max_length."""
+        req = TroubleshootStartRequest(
+            device_type="x" * 100,
+            symptom="y" * 2000,
+            additional_context="z" * 2000,
+        )
+        assert len(req.device_type) == 100
+        assert len(req.symptom) == 2000
+
     def test_start_response_followup(self) -> None:
         """TroubleshootStartResponse should work for follow-up path."""
         resp = TroubleshootStartResponse(
@@ -381,6 +422,17 @@ class TestSafetyPatterns:
         # 'gas leak' in device_type context
         result = check_safety_patterns("something weird", "gas leak detector")
         assert result is not None
+
+    def test_bare_shock_does_not_trigger(self) -> None:
+        """The word 'shock' alone should not trigger (too broad)."""
+        result = check_safety_patterns("I was shocked to find the filter dirty", "furnace")
+        assert result is None
+
+    def test_electrical_shock_still_triggers(self) -> None:
+        """'electrical shock' should still trigger even without bare 'shock'."""
+        result = check_safety_patterns("I felt an electrical shock from the panel", "other")
+        assert result is not None
+        assert result["pattern_name"] == "electrical_hazard"
 
 
 # =============================================================================

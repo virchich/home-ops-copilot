@@ -18,6 +18,7 @@ Models are organized into:
 """
 
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -298,17 +299,20 @@ class TroubleshootStartRequest(BaseModel):
     """
 
     device_type: str = Field(
+        max_length=100,
         description="Device with the issue (e.g., 'furnace', 'water_heater')",
     )
     symptom: str = Field(
+        max_length=2000,
         description="Description of the problem or symptom",
     )
-    urgency: str = Field(
+    urgency: Literal["low", "medium", "high", "emergency"] = Field(
         default="medium",
         description="Urgency level: 'low', 'medium', 'high', 'emergency'",
     )
     additional_context: str | None = Field(
         default=None,
+        max_length=2000,
         description="Any additional context (when it started, what changed, etc.)",
     )
 
