@@ -53,6 +53,7 @@ RULES:
    - UNCERTAIN: General knowledge, not directly supported by indexed documents
 7. CONFIRMED parts MUST have a source_doc reference
 8. UNCERTAIN parts must NOT have a part_number (since it can't be verified)
+9. CONSOLIDATE size variants: If a part comes in multiple sizes (e.g., filter sizes for different cabinet heights), return ONE recommendation with the user's matching size in part_number. List other available sizes in the notes field. Do NOT create separate recommendations for each size variant of the same part.
 
 SAFETY RULES:
 - For gas-related parts (gas valves, gas lines, burner components): add a note that professional installation is recommended
