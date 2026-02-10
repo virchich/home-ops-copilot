@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { HouseProfile, TroubleshootStartRequest } from '../types';
 
 interface IntakeFormProps {
@@ -20,15 +20,15 @@ export function IntakeForm({ profile, onSubmit, isLoading }: IntakeFormProps) {
   const [urgency, setUrgency] = useState('medium');
   const [additionalContext, setAdditionalContext] = useState('');
 
-  // Get installed device types from house profile
-  const installedDevices = Object.keys(profile.systems);
+  // Memoize installed devices so the reference is stable across renders
+  const installedDevices = useMemo(() => Object.keys(profile.systems), [profile.systems]);
 
   // Set default device if only one
   useEffect(() => {
     if (installedDevices.length === 1) {
       setDeviceType(installedDevices[0]);
     }
-  }, [installedDevices.length]);
+  }, [installedDevices]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
