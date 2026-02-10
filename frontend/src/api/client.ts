@@ -1,4 +1,13 @@
-import type { AskResponse, HouseProfile, MaintenancePlanResponse, Season } from '../types';
+import type {
+  AskResponse,
+  HouseProfile,
+  MaintenancePlanResponse,
+  Season,
+  TroubleshootStartRequest,
+  TroubleshootStartResponse,
+  TroubleshootDiagnoseRequest,
+  TroubleshootDiagnoseResponse,
+} from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -91,6 +100,56 @@ export async function updateHouseProfile(profile: HouseProfile): Promise<HousePr
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(profile),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ApiError(
+      `Request failed with status ${response.status}`,
+      response.status,
+      errorBody.detail
+    );
+  }
+
+  return response.json();
+}
+
+// =============================================================================
+// TROUBLESHOOTING API
+// =============================================================================
+
+export async function startTroubleshooting(
+  request: TroubleshootStartRequest
+): Promise<TroubleshootStartResponse> {
+  const response = await fetch(`${API_URL}/troubleshoot/start`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ApiError(
+      `Request failed with status ${response.status}`,
+      response.status,
+      errorBody.detail
+    );
+  }
+
+  return response.json();
+}
+
+export async function submitDiagnosis(
+  request: TroubleshootDiagnoseRequest
+): Promise<TroubleshootDiagnoseResponse> {
+  const response = await fetch(`${API_URL}/troubleshoot/diagnose`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
   });
 
   if (!response.ok) {

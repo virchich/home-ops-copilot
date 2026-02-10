@@ -1,5 +1,7 @@
 """FastAPI application for Home Ops Copilot."""
 
+import uuid
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,6 +16,15 @@ from app.workflows.models import (
     MaintenancePlanResponse,
     load_house_profile,
     save_house_profile,
+)
+from app.workflows.troubleshooter import create_diagnosis_workflow, create_intake_workflow
+from app.workflows.troubleshooter_models import (
+    TroubleshootDiagnoseRequest,
+    TroubleshootDiagnoseResponse,
+    TroubleshootingState,
+    TroubleshootPhase,
+    TroubleshootStartRequest,
+    TroubleshootStartResponse,
 )
 
 app = FastAPI(
@@ -111,21 +122,21 @@ def generate_maintenance_plan(request: MaintenancePlanRequest) -> MaintenancePla
 
     # Create and run the workflow
     planner = create_maintenance_planner()
-    result = planner.invoke({
-        "house_profile": profile,
-        "season": request.season,
-    })
+    result = planner.invoke(
+        {
+            "house_profile": profile,
+            "season": request.season,
+        }
+    )
 
     # Check for errors
     if result.get("error"):
         raise HTTPException(status_code=500, detail=result["error"])
 
     # Extract unique source documents from checklist items
-    sources_used = list({
-        item.source_doc
-        for item in result.get("checklist_items", [])
-        if item.source_doc
-    })
+    sources_used = list(
+        {item.source_doc for item in result.get("checklist_items", []) if item.source_doc}
+    )
 
     return MaintenancePlanResponse(
         season=request.season,
@@ -162,3 +173,138 @@ def update_house_profile(profile: HouseProfile) -> HouseProfile:
     """
     save_house_profile(profile)
     return profile
+
+
+# =============================================================================
+# TROUBLESHOOTING ENDPOINTS
+# =============================================================================
+# In-memory session storage for troubleshooting state between invocations.
+# Adequate for a local-first single-user app.
+
+_troubleshoot_sessions: dict[str, TroubleshootingState] = {}
+
+
+@app.post("/troubleshoot/start", response_model=TroubleshootStartResponse)
+def troubleshoot_start(request: TroubleshootStartRequest) -> TroubleshootStartResponse:
+    """
+    Start a troubleshooting session.
+
+    Takes device type and symptom, runs the intake workflow (retrieval +
+    risk assessment + follow-up generation), and returns either follow-up
+    questions or a safety stop.
+
+    Session state is stored server-side for the diagnosis step.
+    """
+    if not settings.openai_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
+        )
+
+    # Load house profile
+    try:
+        profile = load_house_profile()
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=404,
+            detail="House profile not found. Create data/house_profile.json first.",
+        ) from err
+
+    # Generate session ID
+    session_id = str(uuid.uuid4())
+
+    # Run intake workflow
+    intake_workflow = create_intake_workflow()
+    result = intake_workflow.invoke(
+        {
+            "device_type": request.device_type,
+            "symptom": request.symptom,
+            "urgency": request.urgency,
+            "additional_context": request.additional_context,
+            "house_profile": profile,
+            "session_id": session_id,
+        }
+    )
+
+    # Check for errors
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    # Store session state for diagnosis step
+    session_state = TroubleshootingState(
+        **{k: v for k, v in result.items() if k in TroubleshootingState.model_fields}
+    )
+    _troubleshoot_sessions[session_id] = session_state
+
+    return TroubleshootStartResponse(
+        session_id=session_id,
+        phase=result.get("phase", TroubleshootPhase.FOLLOWUP),
+        risk_level=result.get("risk_level"),
+        followup_questions=result.get("followup_questions", []),
+        preliminary_assessment=result.get("preliminary_assessment"),
+        is_safety_stop=result.get("is_safety_stop", False),
+        safety_message=result.get("safety_message"),
+        recommended_professional=result.get("recommended_professional"),
+    )
+
+
+@app.post("/troubleshoot/diagnose", response_model=TroubleshootDiagnoseResponse)
+def troubleshoot_diagnose(request: TroubleshootDiagnoseRequest) -> TroubleshootDiagnoseResponse:
+    """
+    Submit follow-up answers and get a diagnosis.
+
+    Loads the session state from the start step, injects the user's
+    follow-up answers, runs the diagnosis workflow, and returns
+    diagnostic steps with safety guidance.
+    """
+    if not settings.openai_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
+        )
+
+    # Load session state
+    session_state = _troubleshoot_sessions.get(request.session_id)
+    if not session_state:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Session '{request.session_id}' not found. Start a new troubleshooting session.",
+        )
+
+    # Safety check: don't allow diagnosis on safety-stopped sessions
+    if session_state.is_safety_stop:
+        raise HTTPException(
+            status_code=400,
+            detail="This session was safety-stopped. No diagnosis will be generated. "
+            "Please follow the safety guidance provided.",
+        )
+
+    # Build state dict with follow-up answers injected
+    state_dict = session_state.model_dump()
+    state_dict["followup_answers"] = [a.model_dump() for a in request.answers]
+
+    # Run diagnosis workflow
+    diagnosis_workflow = create_diagnosis_workflow()
+    result = diagnosis_workflow.invoke(state_dict)
+
+    # Check for errors
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    # Extract sources from diagnostic steps
+    sources_used = sorted(
+        {step.source_doc for step in result.get("diagnostic_steps", []) if step.source_doc}
+    )
+
+    # Clean up session (one-time use)
+    _troubleshoot_sessions.pop(request.session_id, None)
+
+    return TroubleshootDiagnoseResponse(
+        session_id=request.session_id,
+        diagnosis_summary=result.get("diagnosis_summary", ""),
+        diagnostic_steps=result.get("diagnostic_steps", []),
+        overall_risk_level=result.get("overall_risk_level"),
+        when_to_call_professional=result.get("when_to_call_professional", ""),
+        markdown=result.get("markdown_output", ""),
+        sources_used=sources_used,
+    )
