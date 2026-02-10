@@ -44,21 +44,18 @@ SEASON_CONTEXT: dict[Season, str] = {
 - Outdoor systems: Resume outdoor maintenance, check exterior vents
 - Air quality: Clean HRV/ventilation after closed-up winter months
 - Moisture: Check for condensation damage, mold from winter humidity""",
-
     Season.SUMMER: """SUMMER MAINTENANCE FOCUS:
 - Cooling efficiency: AC maintenance, clean coils, check refrigerant
 - Airflow: Replace filters more frequently due to dust/pollen
 - Humidity control: Adjust HRV settings for summer humidity levels
 - Energy efficiency: Check seals, insulation, reduce cooling load
 - Pest prevention: Inspect vents and openings for pests""",
-
     Season.FALL: """FALL MAINTENANCE FOCUS:
 - Winterization prep: Prepare heating systems before cold weather
 - Furnace: Schedule professional inspection, replace filters
 - Water systems: Protect from freezing, check water heater
 - Ventilation: Clean HRV before heating season increases indoor air recirculation
 - Safety: Test CO detectors, check venting before furnace runs continuously""",
-
     Season.WINTER: """WINTER MAINTENANCE FOCUS:
 - Heating efficiency: Monitor furnace operation, replace filters monthly
 - Freeze prevention: Protect pipes, check water heater
@@ -110,6 +107,7 @@ def get_llm_client() -> instructor.Instructor:
     """Get an instructor-patched OpenAI client."""
     return instructor.from_openai(OpenAI(api_key=settings.openai_api_key))
 
+
 # =============================================================================
 # NODE FUNCTIONS
 # =============================================================================
@@ -148,10 +146,7 @@ def retrieve_docs(state: MaintenancePlanState) -> dict:
 
     # Build season-specific query
     # We create a general query that covers maintenance for the season
-    query_template = SEASON_QUERY_TEMPLATES.get(
-        state.season,
-        "{device} maintenance checklist"
-    )
+    query_template = SEASON_QUERY_TEMPLATES.get(state.season, "{device} maintenance checklist")
 
     # Create a combined query mentioning key devices
     # This helps retrieve relevant docs across all installed systems
@@ -297,12 +292,14 @@ def render_markdown(state: MaintenancePlanState) -> dict:
 
     # Handle empty checklist
     if not state.checklist_items:
-        lines.extend([
-            "No maintenance tasks generated.",
-            "",
-            "---",
-            "*No sources used*",
-        ])
+        lines.extend(
+            [
+                "No maintenance tasks generated.",
+                "",
+                "---",
+                "*No sources used*",
+            ]
+        )
         markdown = "\n".join(lines)
         logger.info(f"Generated markdown ({len(markdown)} chars) - empty checklist")
         return {"markdown_output": markdown}
@@ -360,11 +357,7 @@ def render_markdown(state: MaintenancePlanState) -> dict:
         lines.append("")
 
     # Collect unique sources
-    sources = sorted({
-        item.source_doc
-        for item in state.checklist_items
-        if item.source_doc
-    })
+    sources = sorted({item.source_doc for item in state.checklist_items if item.source_doc})
 
     # Add sources section
     lines.append("---")

@@ -147,3 +147,43 @@ export interface TroubleshootDiagnoseResponse {
   markdown: string;
   sources_used: string[];
 }
+
+// =============================================================================
+// PARTS HELPER TYPES
+// =============================================================================
+
+export type ConfidenceLevel = 'confirmed' | 'likely' | 'uncertain';
+
+export interface PartRecommendation {
+  part_name: string;
+  part_number: string | null;
+  device_type: string;
+  device_model: string | null;
+  description: string;
+  replacement_interval: string | null;
+  where_to_buy: string | null;
+  confidence: ConfidenceLevel;
+  source_doc: string | null;
+  notes: string | null;
+}
+
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  reason: string;
+  related_device: string | null;
+}
+
+export interface PartsLookupRequest {
+  query: string;
+  device_type?: string | null;
+}
+
+export interface PartsLookupResponse {
+  parts: PartRecommendation[];
+  clarification_questions: ClarificationQuestion[];
+  summary: string;
+  markdown: string;
+  sources_used: string[];
+  has_gaps: boolean;
+}

@@ -121,42 +121,50 @@ def generate_report(results: list[SeasonEvalResult], criteria: dict) -> str:
             f"{items_check} | {high_check} |"
         )
 
-    lines.extend([
-        "",
-        f"**Overall**: {'✅ All checks passed' if all_pass else '❌ Some checks failed'}",
-        "",
-        "## Quality Metrics",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            f"**Overall**: {'✅ All checks passed' if all_pass else '❌ Some checks failed'}",
+            "",
+            "## Quality Metrics",
+            "",
+        ]
+    )
 
     for r in results:
-        lines.extend([
-            f"### {r.season.title()}",
-            "",
-            f"- **Total items**: {r.total_items}",
-            f"- **Priority breakdown**: High={r.high_priority_count}, "
-            f"Med={r.medium_priority_count}, Low={r.low_priority_count}",
-            f"- **Source coverage**: {r.source_coverage_pct:.1f}% of items cite sources",
-            f"- **Devices covered**: {', '.join(r.devices_covered) or 'None'}",
-            f"- **Sources used**: {', '.join(r.unique_sources) or 'None'}",
-            f"- **Markdown**: {'✅ Valid' if r.has_markdown else '❌ Missing'}, "
-            f"Checkboxes: {'✅' if r.markdown_has_checkboxes else '❌'}",
-            "",
-        ])
+        lines.extend(
+            [
+                f"### {r.season.title()}",
+                "",
+                f"- **Total items**: {r.total_items}",
+                f"- **Priority breakdown**: High={r.high_priority_count}, "
+                f"Med={r.medium_priority_count}, Low={r.low_priority_count}",
+                f"- **Source coverage**: {r.source_coverage_pct:.1f}% of items cite sources",
+                f"- **Devices covered**: {', '.join(r.devices_covered) or 'None'}",
+                f"- **Sources used**: {', '.join(r.unique_sources) or 'None'}",
+                f"- **Markdown**: {'✅ Valid' if r.has_markdown else '❌ Missing'}, "
+                f"Checkboxes: {'✅' if r.markdown_has_checkboxes else '❌'}",
+                "",
+            ]
+        )
 
     # Add criteria reference
-    lines.extend([
-        "## Golden Criteria Reference",
-        "",
-    ])
-    for season_name, season_criteria in criteria.get("seasons", {}).items():
-        lines.extend([
-            f"### {season_name.title()}",
-            f"- Min items: {season_criteria.get('min_items', 'N/A')}",
-            f"- Min high priority: {season_criteria.get('min_high_priority', 'N/A')}",
-            f"- Expected themes: {', '.join(season_criteria.get('expected_themes', []))}",
+    lines.extend(
+        [
+            "## Golden Criteria Reference",
             "",
-        ])
+        ]
+    )
+    for season_name, season_criteria in criteria.get("seasons", {}).items():
+        lines.extend(
+            [
+                f"### {season_name.title()}",
+                f"- Min items: {season_criteria.get('min_items', 'N/A')}",
+                f"- Min high priority: {season_criteria.get('min_high_priority', 'N/A')}",
+                f"- Expected themes: {', '.join(season_criteria.get('expected_themes', []))}",
+                "",
+            ]
+        )
 
     return "\n".join(lines)
 
@@ -200,10 +208,12 @@ def main() -> None:
     results: list[SeasonEvalResult] = []
     for season in seasons:
         print(f"Generating {season.value} plan...")
-        result = planner.invoke({
-            "house_profile": profile,
-            "season": season,
-        })
+        result = planner.invoke(
+            {
+                "house_profile": profile,
+                "season": season,
+            }
+        )
 
         eval_result = evaluate_season(season.value, result, criteria)
         results.append(eval_result)
@@ -243,7 +253,9 @@ def main() -> None:
     all_pass = all(r.meets_min_items and r.meets_min_high_priority for r in results)
     for r in results:
         status = "✅" if r.meets_min_items and r.meets_min_high_priority else "❌"
-        print(f"  {status} {r.season}: {r.total_items} items, {r.high_priority_count} high priority")
+        print(
+            f"  {status} {r.season}: {r.total_items} items, {r.high_priority_count} high priority"
+        )
     print()
     print(f"Overall: {'✅ All checks passed' if all_pass else '❌ Some checks failed'}")
 

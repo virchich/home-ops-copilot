@@ -1,0 +1,121 @@
+{
+  "description": "Golden test scenarios for parts & consumables helper evaluation. Each scenario tests the parts lookup pipeline against expected behavior.",
+  "version": "1.0",
+  "scenarios": [
+    {
+      "id": "furnace_filter",
+      "query": "Which filter does my furnace need?",
+      "device_type": null,
+      "expected": {
+        "min_parts": 1,
+        "expected_device_types": ["furnace"],
+        "min_confirmed_or_likely": 1,
+        "should_cite_source": true,
+        "should_have_part_number_or_size": true,
+        "should_have_replacement_interval": true,
+        "max_clarification_questions": 2
+      }
+    },
+    {
+      "id": "hrv_filter",
+      "query": "What filter does the HRV need?",
+      "device_type": null,
+      "expected": {
+        "min_parts": 1,
+        "expected_device_types": ["hrv"],
+        "min_confirmed_or_likely": 1,
+        "should_cite_source": true,
+        "should_have_part_number_or_size": false,
+        "should_have_replacement_interval": true,
+        "max_clarification_questions": 2
+      }
+    },
+    {
+      "id": "humidifier_pad",
+      "query": "Replacement pad for humidifier?",
+      "device_type": null,
+      "expected": {
+        "min_parts": 1,
+        "expected_device_types": ["humidifier"],
+        "min_confirmed_or_likely": 1,
+        "should_cite_source": true,
+        "should_have_part_number_or_size": false,
+        "should_have_replacement_interval": true,
+        "max_clarification_questions": 2
+      }
+    },
+    {
+      "id": "all_filters",
+      "query": "What filters do I need for all my systems?",
+      "device_type": null,
+      "expected": {
+        "min_parts": 2,
+        "expected_device_types": [],
+        "min_confirmed_or_likely": 2,
+        "should_cite_source": true,
+        "should_have_part_number_or_size": false,
+        "should_have_replacement_interval": true,
+        "max_clarification_questions": 3,
+        "min_device_types_in_results": 2
+      }
+    },
+    {
+      "id": "water_softener_salt",
+      "query": "What salt for water softener?",
+      "device_type": null,
+      "expected": {
+        "min_parts": 1,
+        "expected_device_types": ["water_softener"],
+        "min_confirmed_or_likely": 0,
+        "should_cite_source": false,
+        "should_have_part_number_or_size": false,
+        "should_have_replacement_interval": false,
+        "max_clarification_questions": 3
+      }
+    },
+    {
+      "id": "unknown_device",
+      "query": "What filter does my air conditioner need?",
+      "device_type": null,
+      "expected": {
+        "min_parts": 0,
+        "expected_device_types": [],
+        "min_confirmed_or_likely": 0,
+        "should_cite_source": false,
+        "should_have_part_number_or_size": false,
+        "should_have_replacement_interval": false,
+        "min_clarification_questions": 1,
+        "max_clarification_questions": 5
+      }
+    },
+    {
+      "id": "vague_query",
+      "query": "What parts should I stock up on?",
+      "device_type": null,
+      "expected": {
+        "min_parts": 2,
+        "expected_device_types": [],
+        "min_confirmed_or_likely": 1,
+        "should_cite_source": true,
+        "should_have_part_number_or_size": false,
+        "should_have_replacement_interval": false,
+        "max_clarification_questions": 5,
+        "summary_present": true
+      }
+    },
+    {
+      "id": "specific_model",
+      "query": "What filter for my Carrier OM9GFRC furnace?",
+      "device_type": "furnace",
+      "expected": {
+        "min_parts": 1,
+        "expected_device_types": ["furnace"],
+        "min_confirmed_or_likely": 1,
+        "should_cite_source": true,
+        "should_have_part_number_or_size": true,
+        "should_have_replacement_interval": true,
+        "max_clarification_questions": 1
+      }
+    }
+  ]
+}
