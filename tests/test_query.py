@@ -18,7 +18,6 @@ from app.rag.query import (
     _has_sufficient_evidence,
     _match_citation_to_source,
     enrich_citations,
-    get_llm_client,
     query,
 )
 
@@ -58,8 +57,6 @@ def create_mock_llm_response(
 @pytest.fixture
 def mock_rag_pipeline() -> Generator[dict[str, Any]]:
     """Fixture that mocks the RAG pipeline components."""
-    get_llm_client.cache_clear()
-
     with (
         patch("app.rag.query.retrieve") as mock_retrieve,
         patch("app.rag.query.format_contexts_for_llm") as mock_format,
@@ -73,50 +70,6 @@ def mock_rag_pipeline() -> Generator[dict[str, Any]]:
             "format": mock_format,
             "client": mock_client,
         }
-
-
-# =============================================================================
-# UNIT TESTS - LLM Client Singleton
-# =============================================================================
-
-
-class TestLLMClientSingleton:
-    """Tests for LLM client singleton behavior."""
-
-    def test_get_llm_client_returns_client(self) -> None:
-        """Should return an instructor client."""
-        get_llm_client.cache_clear()
-
-        with (
-            patch("app.rag.query.OpenAI") as mock_openai,
-            patch("app.rag.query.instructor.from_openai") as mock_instructor,
-        ):
-            mock_client = MagicMock()
-            mock_instructor.return_value = mock_client
-
-            client = get_llm_client()
-
-            assert client == mock_client
-            mock_openai.assert_called_once()
-            mock_instructor.assert_called_once()
-
-    def test_get_llm_client_caches_result(self) -> None:
-        """Should return the same cached client on subsequent calls."""
-        get_llm_client.cache_clear()
-
-        with (
-            patch("app.rag.query.OpenAI") as mock_openai,
-            patch("app.rag.query.instructor.from_openai") as mock_instructor,
-        ):
-            mock_client = MagicMock()
-            mock_instructor.return_value = mock_client
-
-            client1 = get_llm_client()
-            client2 = get_llm_client()
-
-            assert client1 is client2
-            assert mock_openai.call_count == 1
-            assert mock_instructor.call_count == 1
 
 
 # =============================================================================

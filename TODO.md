@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 7 Complete
-**Last Updated**: 2026-02-10
-**Current Focus**: Parts & consumables helper workflow
+**Phase**: Week 8 Complete
+**Last Updated**: 2026-02-17
+**Current Focus**: Langfuse observability integration
 
 ---
 
@@ -130,11 +130,16 @@
 
 **Goal**: Full observability for debugging and optimization.
 
-- [ ] Trace: ingestion, retrieval results, generation, workflow steps
-- [ ] Log: latency, token usage, retrieval hit count, failures
-- [ ] Add tags: device type, workflow name, risk level
+- [x] Add Langfuse dependency + `ObservabilitySettings` config with feature flag
+- [x] Centralized LLM client (`app/llm/client.py`) — auto-traces when enabled
+- [x] `@observe()` wrapper (`app/llm/tracing.py`) — no-op when disabled, zero overhead
+- [x] Replace 4 duplicated `get_llm_client()` with centralized import
+- [x] Add `@observe()` decorators to 17 functions across 6 files
+- [x] Initialize tracing at app startup (`init_tracing()` in main.py)
+- [x] Tests: 12 new tests (client + tracing), all 296 unit tests pass
+- [x] Graceful fallback when keys missing or langfuse not installed
 
-**Deliverable**: You can debug failures via traces, not guesswork.
+**Deliverable**: You can debug failures via traces, not guesswork. ✅
 
 ---
 
@@ -204,6 +209,31 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-02-17** - Week 8: Langfuse Observability Integration
+- **Architecture**: Feature-flagged Langfuse tracing via `OBSERVABILITY__ENABLED` env var
+  - When disabled (default): `@observe()` is a no-op, plain `openai.OpenAI` client — zero overhead
+  - When enabled: `langfuse.openai.OpenAI` auto-traces all LLM calls (tokens, latency, I/O)
+  - `@observe()` decorators create span hierarchy for non-LLM functions
+  - Graceful fallback: missing keys → warning + plain client; missing package → same
+- **Centralized LLM client** (`app/llm/client.py`):
+  - Replaces 4 duplicated `get_llm_client()` functions (query.py, 3 workflows)
+  - `@lru_cache(maxsize=1)` for singleton behavior
+  - When observability enabled: `langfuse.openai.OpenAI` wrapped with instructor
+  - When disabled: `openai.OpenAI` wrapped with instructor (identical to before)
+- **Tracing helpers** (`app/llm/tracing.py`):
+  - `observe(**kwargs)`: Decorator that delegates to `langfuse.observe()` or returns no-op
+  - `init_tracing()`: Initializes Langfuse singleton at startup (called in `main.py`)
+- **Files modified**: 11 existing files + 5 new files
+  - New: `app/llm/__init__.py`, `app/llm/client.py`, `app/llm/tracing.py`, `tests/test_llm_client.py`, `tests/test_tracing.py`, `tests/conftest.py`
+  - Modified: `pyproject.toml`, `app/core/config.py`, `app/rag/query.py`, `app/rag/retriever.py`, `app/workflows/maintenance_planner.py`, `app/workflows/parts_helper.py`, `app/workflows/troubleshooter.py`, `app/main.py`, `tests/test_query.py`
+- **What gets traced** (when enabled):
+  - LLM calls: 6 call sites auto-traced via Langfuse OpenAI wrapper
+  - `@observe()` on 17 functions: 5 API endpoints, 1 RAG query, 1 retrieval, 10 workflow nodes
+- **Tests**: 12 new tests (5 client + 7 tracing), 296 total unit tests pass
+  - Added `tests/conftest.py` with autouse fixture to clear `get_llm_client` cache between tests
+- Key files: `app/llm/client.py`, `app/llm/tracing.py`, `app/core/config.py`
+- **Week 8 Complete!** Ready for Week 9 (Evaluation v2 + regression gates)
 
 **2026-02-10** - Week 7: Parts & Consumables Helper
 - **Architecture**: Single-invocation LangGraph workflow (no session storage needed)

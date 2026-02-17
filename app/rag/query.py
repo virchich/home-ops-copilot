@@ -8,35 +8,11 @@ This module orchestrates the RAG pipeline:
 Uses the `instructor` library for structured, Pydantic-validated LLM outputs.
 """
 
-from functools import lru_cache
-
-import instructor
-from openai import OpenAI
-
 from app.core.config import settings
+from app.llm.client import get_llm_client
+from app.llm.tracing import observe
 from app.rag.models import Citation, LLMResponse, QueryResponse, RiskLevel
 from app.rag.retriever import build_source_mapping, format_contexts_for_llm, retrieve
-
-# =============================================================================
-# LLM CLIENT (SINGLETON)
-# =============================================================================
-# Create the client once and reuse it across requests.
-# This avoids the overhead of creating a new client per request.
-
-
-@lru_cache(maxsize=1)
-def get_llm_client() -> instructor.Instructor:
-    """
-    Get a cached instructor-patched OpenAI client.
-
-    The client is created once and reused for all subsequent calls.
-    This is more efficient than creating a new client per request.
-
-    Returns:
-        instructor.Instructor: OpenAI client with instructor patching
-    """
-    return instructor.from_openai(OpenAI(api_key=settings.openai_api_key))
-
 
 # =============================================================================
 # SYSTEM PROMPT
@@ -218,6 +194,7 @@ def _has_sufficient_evidence(nodes: list) -> bool:
     return bool(top_score >= settings.rag.min_relevance_score)
 
 
+@observe(name="rag_query")
 def query(question: str) -> QueryResponse:
     """
     Query the system with a question and get a structured response.

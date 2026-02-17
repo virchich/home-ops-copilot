@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.llm.tracing import init_tracing, observe
 from app.rag.models import Citation
 from app.rag.query import query
 from app.workflows.maintenance_planner import create_maintenance_planner
@@ -32,6 +33,9 @@ from app.workflows.troubleshooter_models import (
     TroubleshootStartRequest,
     TroubleshootStartResponse,
 )
+
+# Initialize Langfuse tracing (no-op when OBSERVABILITY__ENABLED=false)
+init_tracing()
 
 app = FastAPI(
     title="Home Ops Copilot",
@@ -93,6 +97,7 @@ def health_check() -> dict:
 
 
 @app.post("/ask", response_model=AskResponse)
+@observe(name="api_ask")
 def ask(request: AskRequest) -> AskResponse:
     """
     Ask a question about home maintenance.
@@ -116,6 +121,7 @@ def ask(request: AskRequest) -> AskResponse:
 
 
 @app.post("/maintenance-plan", response_model=MaintenancePlanResponse)
+@observe(name="api_maintenance_plan")
 def generate_maintenance_plan(request: MaintenancePlanRequest) -> MaintenancePlanResponse:
     """
     Generate a seasonal maintenance plan for a house.
@@ -197,6 +203,7 @@ def update_house_profile(profile: HouseProfile) -> HouseProfile:
 
 
 @app.post("/parts/lookup", response_model=PartsLookupAPIResponse)
+@observe(name="api_parts_lookup")
 def parts_lookup(request: PartsLookupRequest) -> PartsLookupAPIResponse:
     """
     Look up replacement parts and consumables.
@@ -274,6 +281,7 @@ def _evict_expired_sessions() -> None:
 
 
 @app.post("/troubleshoot/start", response_model=TroubleshootStartResponse)
+@observe(name="api_troubleshoot_start")
 def troubleshoot_start(request: TroubleshootStartRequest) -> TroubleshootStartResponse:
     """
     Start a troubleshooting session.
@@ -343,6 +351,7 @@ def troubleshoot_start(request: TroubleshootStartRequest) -> TroubleshootStartRe
 
 
 @app.post("/troubleshoot/diagnose", response_model=TroubleshootDiagnoseResponse)
+@observe(name="api_troubleshoot_diagnose")
 def troubleshoot_diagnose(request: TroubleshootDiagnoseRequest) -> TroubleshootDiagnoseResponse:
     """
     Submit follow-up answers and get a diagnosis.

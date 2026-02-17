@@ -14,12 +14,12 @@ Users refine by re-querying with more detail — no session storage needed.
 
 import logging
 
-import instructor
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from openai import OpenAI
 
 from app.core.config import settings
+from app.llm.client import get_llm_client
+from app.llm.tracing import observe
 from app.rag.retriever import detect_device_types, retrieve
 from app.workflows.helpers import format_chunks_as_context, format_device_details
 from app.workflows.models import RetrievedChunk
@@ -67,16 +67,12 @@ CLARIFICATION QUESTIONS:
 """
 
 
-def get_llm_client() -> instructor.Instructor:
-    """Get an instructor-patched OpenAI client."""
-    return instructor.from_openai(OpenAI(api_key=settings.openai_api_key))
-
-
 # =============================================================================
 # NODE FUNCTIONS
 # =============================================================================
 
 
+@observe(name="parts_parse_query")
 def parse_query(state: PartsHelperState) -> dict:
     """Determine target device(s) from the query.
 
@@ -117,6 +113,7 @@ def parse_query(state: PartsHelperState) -> dict:
     return {"detected_devices": []}
 
 
+@observe(name="parts_retrieve_docs")
 def retrieve_docs(state: PartsHelperState) -> dict:
     """Fetch relevant document chunks for parts identification.
 
@@ -167,6 +164,7 @@ def retrieve_docs(state: PartsHelperState) -> dict:
     return {"retrieved_chunks": retrieved_chunks}
 
 
+@observe(name="parts_generate_list")
 def generate_parts_list(state: PartsHelperState) -> dict:
     """Generate structured parts recommendations using the LLM.
 
@@ -250,6 +248,7 @@ Identify the correct replacement parts, filters, and consumables based on the do
         }
 
 
+@observe(name="parts_render_markdown")
 def render_markdown(state: PartsHelperState) -> dict:
     """Format parts recommendations as markdown.
 

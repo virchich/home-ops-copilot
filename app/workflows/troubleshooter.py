@@ -22,13 +22,13 @@ Safety model:
 
 import logging
 
-import instructor
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.llm.client import get_llm_client
+from app.llm.tracing import observe
 from app.rag.models import RiskLevel
 from app.rag.retriever import retrieve
 from app.workflows.helpers import format_chunks_as_context, format_device_details
@@ -187,11 +187,6 @@ def check_safety_patterns(symptom: str, device_type: str) -> dict | None:
     return None
 
 
-def get_llm_client() -> instructor.Instructor:
-    """Get an instructor-patched OpenAI client."""
-    return instructor.from_openai(OpenAI(api_key=settings.openai_api_key))
-
-
 # format_chunks_as_context and format_device_details are imported from
 # app.workflows.helpers (shared across workflows)
 
@@ -250,6 +245,7 @@ CRITICAL SAFETY RULES - THESE ARE NON-NEGOTIABLE:
 # =============================================================================
 
 
+@observe(name="troubleshoot_intake_parse")
 def intake_parse(state: TroubleshootingState) -> dict:
     """Parse and normalize intake inputs.
 
@@ -284,6 +280,7 @@ def intake_parse(state: TroubleshootingState) -> dict:
     }
 
 
+@observe(name="troubleshoot_retrieve_docs")
 def retrieve_docs(state: TroubleshootingState) -> dict:
     """Retrieve relevant documents for the reported symptom.
 
@@ -326,6 +323,7 @@ def retrieve_docs(state: TroubleshootingState) -> dict:
     return {"retrieved_chunks": retrieved_chunks}
 
 
+@observe(name="troubleshoot_assess_risk")
 def assess_risk(state: TroubleshootingState) -> dict:
     """Assess risk level using two-layer safety check.
 
@@ -453,6 +451,7 @@ def risk_router(state: TroubleshootingState) -> str:
     return "generate_followups"
 
 
+@observe(name="troubleshoot_safety_stop")
 def safety_stop(state: TroubleshootingState) -> dict:
     """Build safety stop response.
 
@@ -476,6 +475,7 @@ def safety_stop(state: TroubleshootingState) -> dict:
     }
 
 
+@observe(name="troubleshoot_generate_followups")
 def generate_followups(state: TroubleshootingState) -> dict:
     """Generate 2-3 targeted follow-up questions using the LLM.
 
@@ -561,6 +561,7 @@ Generate 2-3 targeted follow-up questions to help diagnose this issue."""
 # =============================================================================
 
 
+@observe(name="troubleshoot_generate_diagnosis")
 def generate_diagnosis(state: TroubleshootingState) -> dict:
     """Generate a full diagnosis with diagnostic steps.
 
@@ -638,6 +639,7 @@ Provide a diagnosis with 3-6 actionable steps to resolve this issue. Remember: t
         return {"error": "Diagnosis generation failed", "phase": TroubleshootPhase.DIAGNOSIS}
 
 
+@observe(name="troubleshoot_render_output")
 def render_output(state: TroubleshootingState) -> dict:
     """Render diagnostic output as formatted markdown.
 

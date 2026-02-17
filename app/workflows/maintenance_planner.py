@@ -11,13 +11,13 @@ Each node receives the full state and returns a partial update.
 
 import logging
 
-import instructor
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.llm.client import get_llm_client
+from app.llm.tracing import observe
 from app.rag.retriever import retrieve
 from app.workflows.models import ChecklistItem, MaintenancePlanState, RetrievedChunk, Season
 
@@ -103,11 +103,6 @@ class ChecklistResponse(BaseModel):
     )
 
 
-def get_llm_client() -> instructor.Instructor:
-    """Get an instructor-patched OpenAI client."""
-    return instructor.from_openai(OpenAI(api_key=settings.openai_api_key))
-
-
 # =============================================================================
 # NODE FUNCTIONS
 # =============================================================================
@@ -115,6 +110,7 @@ def get_llm_client() -> instructor.Instructor:
 # These are stub implementations - we'll add real logic in Phase 3.
 
 
+@observe(name="maintenance_retrieve_docs")
 def retrieve_docs(state: MaintenancePlanState) -> dict:
     """Retrieve relevant documents from the RAG index.
 
@@ -183,6 +179,7 @@ def retrieve_docs(state: MaintenancePlanState) -> dict:
     return {"retrieved_chunks": retrieved_chunks}
 
 
+@observe(name="maintenance_generate_checklist")
 def generate_checklist(state: MaintenancePlanState) -> dict:
     """Generate checklist items from retrieved documents.
 
@@ -262,6 +259,7 @@ Focus on tasks that are relevant for the {state.season.value} priorities listed 
         return {"checklist_items": [], "error": str(e)}
 
 
+@observe(name="maintenance_render_markdown")
 def render_markdown(state: MaintenancePlanState) -> dict:
     """Render checklist items as Apple Notes-friendly markdown.
 
