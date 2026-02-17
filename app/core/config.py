@@ -128,6 +128,34 @@ class LLMSettings(BaseModel):
     )
 
 
+class ObservabilitySettings(BaseModel):
+    """Langfuse observability settings.
+
+    When enabled, all LLM calls, retrieval, and workflow nodes are
+    traced to Langfuse Cloud. When disabled (default), everything
+    is a no-op with zero overhead.
+
+    Env vars: OBSERVABILITY__ENABLED=true, OBSERVABILITY__LANGFUSE_PUBLIC_KEY=pk-...
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable Langfuse tracing (requires valid keys)",
+    )
+    langfuse_public_key: str = Field(
+        default="",
+        description="Langfuse public key (pk-...)",
+    )
+    langfuse_secret_key: str = Field(
+        default="",
+        description="Langfuse secret key (sk-...)",
+    )
+    langfuse_base_url: str = Field(
+        default="https://us.cloud.langfuse.com",
+        description="Langfuse base URL (e.g. https://us.cloud.langfuse.com for US region)",
+    )
+
+
 # =============================================================================
 # MAIN SETTINGS CLASS
 # =============================================================================
@@ -172,6 +200,7 @@ class Settings(BaseSettings):
     paths: PathSettings = Field(default_factory=PathSettings)
     rag: RAGSettings = Field(default_factory=RAGSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
+    observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
 
 
 # Singleton instance - import this in other modules

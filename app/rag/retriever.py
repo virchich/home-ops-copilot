@@ -40,6 +40,7 @@ from llama_index.core.vector_stores import (
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from app.core.config import settings
+from app.llm.tracing import observe
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +283,7 @@ def build_metadata_filters(device_types: list[str]) -> MetadataFilters | None:
 # =============================================================================
 
 
+@observe(name="retrieve")
 def retrieve(
     question: str,
     top_k: int | None = None,
