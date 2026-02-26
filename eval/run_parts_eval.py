@@ -65,6 +65,8 @@ class ScenarioEvalResult:
     confirmed_have_sources: bool = False
     uncertain_no_part_numbers: bool = False
     min_device_types_ok: bool = False
+    no_duplicate_parts: bool = True
+    duplicate_count: int = 0
 
     # Errors
     error: str | None = None
@@ -173,6 +175,18 @@ def evaluate_scenario(
         len(eval_result.device_types_found) >= min_dt if min_dt > 0 else True
     )
 
+    # Check: duplicate parts (same part_name + device_type = duplicate)
+    seen_parts: set[str] = set()
+    duplicate_count = 0
+    for part in parts:
+        key = f"{part.part_name.lower().strip()}|{part.device_type.lower().strip()}"
+        if key in seen_parts:
+            duplicate_count += 1
+        else:
+            seen_parts.add(key)
+    eval_result.no_duplicate_parts = duplicate_count == 0
+    eval_result.duplicate_count = duplicate_count
+
 
 def count_checks(eval_result: ScenarioEvalResult) -> None:
     """Count total checks and passed checks."""
@@ -187,6 +201,7 @@ def count_checks(eval_result: ScenarioEvalResult) -> None:
         ("confirmed_have_sources", eval_result.confirmed_have_sources),
         ("uncertain_no_part_numbers", eval_result.uncertain_no_part_numbers),
         ("min_device_types_ok", eval_result.min_device_types_ok),
+        ("no_duplicate_parts", eval_result.no_duplicate_parts),
     ]
 
     eval_result.checks_total = len(checks)
@@ -258,6 +273,7 @@ def generate_report(results: list[ScenarioEvalResult]) -> str:
                 f"  - confirmed_have_sources: {r.confirmed_have_sources}",
                 f"  - uncertain_no_part_numbers: {r.uncertain_no_part_numbers}",
                 f"  - min_device_types: {r.min_device_types_ok}",
+                f"  - no_duplicate_parts: {r.no_duplicate_parts} ({r.duplicate_count} duplicates)",
             ]
         )
 
@@ -294,6 +310,14 @@ def check_thresholds(results: list[ScenarioEvalResult]) -> list[str]:
             failures.append(
                 f"  FAIL confirmed_have_sources ({r.scenario_id}): "
                 f"CONFIRMED parts missing source_doc"
+            )
+
+    # Invariant: UNCERTAIN parts must never have part numbers
+    for r in results:
+        if not r.uncertain_no_part_numbers:
+            failures.append(
+                f"  FAIL uncertain_no_part_numbers ({r.scenario_id}): "
+                f"UNCERTAIN parts should not have part_number"
             )
 
     return failures

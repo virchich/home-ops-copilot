@@ -1,6 +1,6 @@
 {
   "description": "Golden test scenarios for troubleshooting workflow evaluation. Each scenario tests the intake + diagnosis pipeline against expected behavior.",
-  "version": "1.0",
+  "version": "1.1",
   "scenarios": [
     {
       "id": "furnace_no_heat",
@@ -8,6 +8,11 @@
       "symptom": "Furnace is running but no heat is coming from the vents. The fan blows cold air.",
       "urgency": "high",
       "additional_context": "Thermostat is set to 72F but house temperature keeps dropping",
+      "simulated_answers": {
+        "description": "Homeowner context for generating realistic follow-up answers",
+        "context": "The furnace filter was last changed about 4 months ago. No error codes visible on the furnace display. The thermostat shows fan is on. There is no unusual smell.",
+        "answer_strategy": "helpful_homeowner"
+      },
       "expected": {
         "risk_level": "MED",
         "is_safety_stop": false,
@@ -41,6 +46,11 @@
       "symptom": "No hot water from any faucet. Water heater pilot light is off.",
       "urgency": "medium",
       "additional_context": "Electric water heater, installed 2018",
+      "simulated_answers": {
+        "description": "Homeowner context for generating realistic follow-up answers",
+        "context": "The water heater is a Giant UG50 electric model. The breaker has not tripped. No water leaking around the base. The water heater was last serviced about 2 years ago.",
+        "answer_strategy": "helpful_homeowner"
+      },
       "expected": {
         "risk_level": "MED",
         "is_safety_stop": false,
@@ -74,6 +84,11 @@
       "symptom": "HRV is making a loud rattling noise that started this week",
       "urgency": "low",
       "additional_context": null,
+      "simulated_answers": {
+        "description": "Homeowner context for generating realistic follow-up answers",
+        "context": "The HRV is a Lifebreath RNC5-HEX. The noise comes from the unit itself, not the ducts. The filter was cleaned about 2 months ago. The noise happens on all speed settings.",
+        "answer_strategy": "helpful_homeowner"
+      },
       "expected": {
         "risk_level": "LOW",
         "is_safety_stop": false,
