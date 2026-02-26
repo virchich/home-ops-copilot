@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 10 In Progress
+**Phase**: Week 10 Complete
 **Last Updated**: 2026-02-26
-**Current Focus**: Red-teaming + safety tightening
+**Current Focus**: Week 10 complete — Red-teaming + safety tightening done
 
 ---
 
@@ -172,8 +172,10 @@
 - [x] Disable Langfuse tracing in eval runners (no cost/noise during evals)
 - [x] Prompt hardening: anti-injection, anti-hallucination, overconfidence guards in all 4 system prompts
 - [x] 33 safety regression unit tests (prompt invariants, safety patterns, golden file integrity)
-- [ ] Run adversarial eval and fix any failures (blocked until full eval completes)
-- [ ] Update TODO.md with final results
+- [x] Fix GPT-5.2 `max_completion_tokens` — reasoning models need 8000-16000+ (was 500-4000)
+- [x] Co-occurrence keyword matching for electrical hazard safety patterns
+- [x] Run adversarial eval: **48/48 checks (100%)** ✅
+- [x] Run full RAG eval: **100/100 questions, 0 errors, all thresholds pass** ✅
 
 **Deliverable**: Safer behavior under adversarial questions. ✅
 
@@ -228,23 +230,30 @@ These are the first things to tackle in Week 1:
   - Standalone runner routes scenarios to correct workflow (ask, troubleshoot, parts, maintenance)
   - Thresholds: overall_pass_rate ≥ 0.85, safety_critical_pass_rate = 100% (prompt_injection + safety_bypass)
   - Makefile targets: `eval-adversarial`, `eval-adversarial-threshold`, added to `eval-check-all`
-- **Infra fixes: SSL + Langfuse**
+- **Infra fixes: SSL + Langfuse + GPT-5.2 token limits**
   - SSL: Diagnosed Cisco SSL inspection proxy causing `SSL_CERTIFICATE_VERIFY_FAILED`. Added `truststore` package + `app/core/ssl_setup.py` to use OS cert store. Wired into all 6 entrypoints.
   - Langfuse env bridge: `OBSERVABILITY__*` config now propagated to native `LANGFUSE_*` env vars at import time (suppresses "initialized without public_key" warning)
   - Disabled Langfuse tracing in all 5 eval runners (`OBSERVABILITY__ENABLED=false` before app imports)
+  - GPT-5.2 token fix: `max_completion_tokens` increased from 500-4000 → 8000-16000. Reasoning models split this budget between internal reasoning + visible output; previous limits caused empty responses (all tokens consumed by reasoning).
 - **Phase 2: Prompt hardening** — All 4 system prompts strengthened:
   - `query.py`: Added anti-injection paragraph, "do NOT fabricate" rule, unknown topic disclosure (rule 7)
   - `troubleshooter.py`: Strengthened anti-injection wording, added "do NOT fabricate procedures" (rule 6), sparse docs acknowledgment (rule 8)
   - `parts_helper.py`: Added overconfidence guard (rule 10: empty list when docs lack info)
   - `maintenance_planner.py`: Added anti-injection paragraph (was entirely missing), anti-fabrication rules 7-8
+- **Phase 3: Safety pattern improvements**
+  - Added `co_occurrence_groups` to electrical hazard pattern — when ALL terms in a group appear anywhere in text, safety stop triggers (catches "I smell something burning near my electrical panel")
+  - Refined adversarial golden `must_not_contain`: removed "turn off the main" (legitimate safety advice), added "remove the breaker" / "pull the breaker" (actual DIY instruction patterns)
 - **Phase 4: Safety regression tests** — `tests/test_safety_regression.py` (33 tests)
   - `TestPromptSafetyInvariants`: All prompts have anti-injection, anti-hallucination, professional recommendation language
   - `TestAdversarialSafetyPatterns`: Deterministic patterns catch adversarial inputs (sulfur smell, CO detector, burning electrical, injection attempts)
   - `TestSafetyKeywordCoverage`: All 5 hazard categories present, ≥3 keywords each, actionable messages, specific trades
   - `TestAdversarialGoldenIntegrity`: Golden file well-formed, valid workflows/categories, ≥15 scenarios, safety-critical scenarios have risk expectations
+- **Final eval results:**
+  - Adversarial eval: **48/48 checks (100%)** — all 18 scenarios pass
+  - Full RAG eval (100 Qs): **0 errors, 88% citations, 100% valid risk, 90.5% HIGH→pro rate** — all thresholds pass
 - Key files: `eval/adversarial_golden.json`, `eval/run_adversarial_eval.py`, `app/core/ssl_setup.py`, `app/llm/tracing.py`, `tests/test_safety_regression.py`
 - Tests: 327 unit tests, all passing
-- Full RAG eval running in background (100 questions)
+- **Week 10 Complete!** Ready for Week 11 (Polish + exports)
 
 **2026-02-26** - Week 9: Evaluation v2 + Regression Gates
 - **Phase 1: Light CI** — GitHub Actions workflow (`.github/workflows/ci.yml`)
@@ -539,6 +548,8 @@ These are the first things to tackle in Week 1:
 | 2026-02-26 | Langfuse disabled in eval runners | Evals don't need tracing; avoids cost and noisy auth errors |
 | 2026-02-26 | Standalone adversarial eval runner | Separate from main RAG eval; different thresholds and safety-critical 100% requirement |
 | 2026-02-26 | Anti-injection in all prompts | Even maintenance planner (no direct user input) gets hardened for defense in depth |
+| 2026-02-26 | max_completion_tokens 16000 default | GPT-5.2 reasoning models consume tokens for internal reasoning; 1000-4000 caused empty outputs |
+| 2026-02-26 | Co-occurrence keyword groups | Substring matching too brittle for non-adjacent keywords; co-occurrence catches "burning...electrical panel" |
 
 ---
 
