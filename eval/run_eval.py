@@ -521,6 +521,10 @@ def check_thresholds(format_metrics: dict, ragas_metrics: dict | None) -> list[s
 
 def main() -> int:
     """Run the evaluation."""
+    import os
+
+    os.environ["OBSERVABILITY__ENABLED"] = "false"
+
     from app.core.ssl_setup import configure_ssl
 
     configure_ssl()
