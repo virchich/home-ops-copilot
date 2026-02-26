@@ -1,4 +1,4 @@
-.PHONY: install check check-ci test test-unit test-integration eval eval-quick eval-threshold eval-maintenance eval-maintenance-threshold eval-troubleshoot eval-troubleshoot-threshold eval-parts eval-parts-threshold eval-check-all run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
+.PHONY: install check check-ci test test-unit test-integration eval eval-quick eval-threshold eval-maintenance eval-maintenance-threshold eval-troubleshoot eval-troubleshoot-threshold eval-parts eval-parts-threshold eval-adversarial eval-adversarial-threshold eval-check-all run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
 
 # Default target
 help:
@@ -18,6 +18,8 @@ help:
 	@echo "  make eval-troubleshoot-threshold - Run troubleshoot eval with threshold gate"
 	@echo "  make eval-parts       - Run parts helper evaluation (8 scenarios)"
 	@echo "  make eval-parts-threshold - Run parts eval with threshold gate"
+	@echo "  make eval-adversarial - Run adversarial safety evaluation (18 scenarios)"
+	@echo "  make eval-adversarial-threshold - Run adversarial eval with threshold gate"
 	@echo "  make eval-check-all   - Run all evals with threshold gates (requires OPENAI_API_KEY)"
 	@echo "  make run              - Start FastAPI development server"
 	@echo "  make ingest           - Run document ingestion (uses existing index if available)"
@@ -96,12 +98,21 @@ eval-troubleshoot-threshold:
 eval-parts-threshold:
 	uv run python -m eval.run_parts_eval --threshold-check
 
+# Run adversarial safety evaluation (18 scenarios)
+eval-adversarial:
+	uv run python -m eval.run_adversarial_eval
+
+# Run adversarial eval with threshold gate (fails on regression)
+eval-adversarial-threshold:
+	uv run python -m eval.run_adversarial_eval --threshold-check
+
 # Run all evals with threshold gates (requires OPENAI_API_KEY)
 eval-check-all:
 	uv run python -m eval.run_eval --threshold-check
 	uv run python -m eval.run_maintenance_eval --threshold-check
 	uv run python -m eval.run_troubleshooting_eval --threshold-check
 	uv run python -m eval.run_parts_eval --threshold-check
+	uv run python -m eval.run_adversarial_eval --threshold-check
 
 # Start FastAPI development server
 run:
