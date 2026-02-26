@@ -238,6 +238,98 @@ def generate_report(results: list[ScenarioEvalResult]) -> str:
     return "\n".join(lines)
 
 
+def _generate_followup_answers(
+    questions: list,
+    sim_config: dict,
+) -> list:
+    """Generate realistic follow-up answers based on scenario context.
+
+    Instead of always answering "I'm not sure", this uses the scenario's
+    simulated_answers config to produce homeowner-like responses. The answers
+    are matched to question content using simple keyword heuristics.
+
+    Args:
+        questions: List of FollowupQuestion objects from the intake workflow.
+        sim_config: The scenario's ``simulated_answers`` dict from golden JSON.
+            Contains ``context`` (homeowner knowledge) and ``answer_strategy``.
+
+    Returns:
+        List of FollowupAnswer objects with realistic answers.
+    """
+    from app.workflows.troubleshooter_models import FollowupAnswer
+
+    context = sim_config.get("context", "")
+
+    if not context:
+        # No simulated context — fall back to generic "I'm not sure"
+        return [FollowupAnswer(question_id=q.id, answer="I'm not sure") for q in questions]
+
+    answers = []
+    for q in questions:
+        answer = _match_answer_from_context(q.question, context)
+        answers.append(FollowupAnswer(question_id=q.id, answer=answer))
+
+    return answers
+
+
+def _match_answer_from_context(question: str, context: str) -> str:
+    """Match a follow-up question to a relevant fragment of the homeowner context.
+
+    Uses simple keyword matching to find the most relevant sentence from the
+    context. Falls back to a reasonable "I don't know" if no match found.
+    """
+    question_lower = question.lower()
+    context_sentences = [s.strip() for s in context.split(".") if s.strip()]
+
+    # Score each context sentence by keyword overlap with the question
+    best_score = 0
+    best_sentence = ""
+    for sentence in context_sentences:
+        sentence_lower = sentence.lower()
+        # Count shared significant words (skip very common words)
+        skip_words = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "do",
+            "does",
+            "did",
+            "has",
+            "have",
+            "had",
+            "i",
+            "my",
+            "your",
+            "it",
+            "this",
+            "that",
+            "what",
+            "when",
+            "how",
+            "can",
+            "you",
+            "any",
+            "if",
+        }
+        q_words = {w for w in question_lower.split() if w not in skip_words and len(w) > 2}
+        s_words = {w for w in sentence_lower.split() if w not in skip_words and len(w) > 2}
+        score = len(q_words & s_words)
+
+        if score > best_score:
+            best_score = score
+            best_sentence = sentence
+
+    if best_score >= 1 and best_sentence:
+        return best_sentence.strip()
+
+    # No good match — give a mild "unsure" response rather than total ignorance
+    return "I'm not sure about that specific detail."
+
+
 def check_thresholds(results: list[ScenarioEvalResult]) -> list[str]:
     """Check results against fixed thresholds.
 
@@ -286,7 +378,6 @@ def main() -> int:
     # Import here to avoid loading models when just checking help
     from app.workflows.models import load_house_profile
     from app.workflows.troubleshooter import create_diagnosis_workflow, create_intake_workflow
-    from app.workflows.troubleshooter_models import FollowupAnswer
 
     print("=" * 60)
     print("Troubleshooting Workflow Evaluation")
@@ -342,15 +433,10 @@ def main() -> int:
 
             # Run diagnosis if not safety-stopped
             if not intake_result.get("is_safety_stop", False):
-                # Simulate follow-up answers
+                # Generate realistic follow-up answers from scenario context
                 questions = intake_result.get("followup_questions", [])
-                answers = [
-                    FollowupAnswer(
-                        question_id=q.id,
-                        answer="I'm not sure",
-                    )
-                    for q in questions
-                ]
+                sim_config = scenario.get("simulated_answers", {})
+                answers = _generate_followup_answers(questions, sim_config)
 
                 state_dict = dict(intake_result)
                 state_dict["followup_answers"] = [a.model_dump() for a in answers]

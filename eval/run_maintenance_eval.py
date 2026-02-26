@@ -32,6 +32,9 @@ THRESHOLDS: dict[str, float] = {
 }
 
 
+MAX_ITEMS_PER_SEASON = 30  # Upper bound — plans with more items are likely noisy
+
+
 @dataclass
 class SeasonEvalResult:
     """Evaluation results for a single season's maintenance plan."""
@@ -50,6 +53,11 @@ class SeasonEvalResult:
     meets_min_items: bool
     meets_min_high_priority: bool
     source_coverage_pct: float
+    within_max_items: bool = True
+    meets_device_coverage: bool = True
+    no_duplicate_tasks: bool = True
+    duplicate_count: int = 0
+    missing_devices: list[str] | None = None
     # Errors
     error: str | None = None
 
@@ -90,6 +98,21 @@ def evaluate_season(
     season_criteria = criteria.get("seasons", {}).get(season_name, {})
     min_items = season_criteria.get("min_items", 5)
     min_high = season_criteria.get("min_high_priority", 2)
+    expected_devices = season_criteria.get("expected_device_coverage", [])
+
+    # Check device coverage: all expected devices should appear in results
+    missing = [d for d in expected_devices if d not in devices_covered]
+
+    # Detect duplicate tasks by normalizing task descriptions
+    seen_tasks: set[str] = set()
+    duplicate_count = 0
+    for item in items:
+        # Normalize: lowercase, strip whitespace
+        key = item.task.lower().strip()
+        if key in seen_tasks:
+            duplicate_count += 1
+        else:
+            seen_tasks.add(key)
 
     return SeasonEvalResult(
         season=season_name,
@@ -105,6 +128,11 @@ def evaluate_season(
         meets_min_items=len(items) >= min_items,
         meets_min_high_priority=len(high) >= min_high,
         source_coverage_pct=source_pct,
+        within_max_items=len(items) <= MAX_ITEMS_PER_SEASON,
+        meets_device_coverage=len(missing) == 0,
+        no_duplicate_tasks=duplicate_count == 0,
+        duplicate_count=duplicate_count,
+        missing_devices=missing if missing else None,
     )
 
 
@@ -154,9 +182,12 @@ def generate_report(results: list[SeasonEvalResult], criteria: dict) -> str:
                 f"Med={r.medium_priority_count}, Low={r.low_priority_count}",
                 f"- **Source coverage**: {r.source_coverage_pct:.1f}% of items cite sources",
                 f"- **Devices covered**: {', '.join(r.devices_covered) or 'None'}",
+                f"- **Device coverage met**: {'✅' if r.meets_device_coverage else '❌ Missing: ' + ', '.join(r.missing_devices or [])}",
                 f"- **Sources used**: {', '.join(r.unique_sources) or 'None'}",
                 f"- **Markdown**: {'✅ Valid' if r.has_markdown else '❌ Missing'}, "
                 f"Checkboxes: {'✅' if r.markdown_has_checkboxes else '❌'}",
+                f"- **Within max items ({MAX_ITEMS_PER_SEASON})**: {'✅' if r.within_max_items else '❌'}",
+                f"- **Duplicate tasks**: {r.duplicate_count} found {'✅' if r.no_duplicate_tasks else '❌'}",
                 "",
             ]
         )
@@ -189,14 +220,19 @@ def check_thresholds(results: list[SeasonEvalResult]) -> list[str]:
     """
     failures: list[str] = []
 
-    # Overall pass rate: each season contributes 2 checks (min_items, min_high_priority)
+    # Overall pass rate: each season contributes checks
+    # (min_items, min_high_priority, device_coverage, within_max_items)
     total_checks = 0
     total_passed = 0
     for r in results:
-        total_checks += 2
+        total_checks += 4
         if r.meets_min_items:
             total_passed += 1
         if r.meets_min_high_priority:
+            total_passed += 1
+        if r.meets_device_coverage:
+            total_passed += 1
+        if r.within_max_items:
             total_passed += 1
 
     if total_checks > 0:
@@ -221,6 +257,21 @@ def check_thresholds(results: list[SeasonEvalResult]) -> list[str]:
         if not r.markdown_has_checkboxes:
             failures.append(
                 f"  FAIL markdown_has_checkboxes ({r.season}): no checkboxes in markdown"
+            )
+
+    # Device coverage: warn about missing expected devices
+    for r in results:
+        if not r.meets_device_coverage:
+            failures.append(
+                f"  FAIL device_coverage ({r.season}): "
+                f"missing devices: {', '.join(r.missing_devices or [])}"
+            )
+
+    # Duplicate detection: flag excessive duplicates
+    for r in results:
+        if r.duplicate_count > 0:
+            failures.append(
+                f"  FAIL duplicate_tasks ({r.season}): {r.duplicate_count} duplicate task(s) found"
             )
 
     return failures
