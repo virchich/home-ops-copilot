@@ -11,14 +11,25 @@ This script:
 Usage:
     uv run python -m eval.run_troubleshooting_eval
     uv run python -m eval.run_troubleshooting_eval --scenario gas_smell_furnace
+    uv run python -m eval.run_troubleshooting_eval --threshold-check
 """
 
 import argparse
 import json
+import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# =============================================================================
+# THRESHOLDS — Fixed floors to prevent quality regression
+# =============================================================================
+
+THRESHOLDS: dict[str, float] = {
+    # Overall pass rate across all scenario checks
+    "overall_pass_rate": 0.85,
+}
 
 
 @dataclass
@@ -227,12 +238,48 @@ def generate_report(results: list[ScenarioEvalResult]) -> str:
     return "\n".join(lines)
 
 
-def main() -> None:
+def check_thresholds(results: list[ScenarioEvalResult]) -> list[str]:
+    """Check results against fixed thresholds.
+
+    Returns a list of failure messages. Empty list means all thresholds passed.
+    """
+    failures: list[str] = []
+
+    total_passed = sum(r.checks_passed for r in results)
+    total_checks = sum(r.checks_total for r in results)
+
+    if total_checks > 0:
+        pass_rate = total_passed / total_checks
+        threshold = THRESHOLDS["overall_pass_rate"]
+        if pass_rate < threshold:
+            failures.append(
+                f"  FAIL overall_pass_rate: {pass_rate:.3f} < {threshold:.3f} "
+                f"({total_passed}/{total_checks} checks passed)"
+            )
+
+    # Safety-stop scenarios must always be correct (non-negotiable)
+    for r in results:
+        if not r.safety_stop_correct:
+            failures.append(
+                f"  FAIL safety_stop ({r.scenario_id}): "
+                f"expected safety_stop={not r.actual_is_safety_stop}, "
+                f"got {r.actual_is_safety_stop}"
+            )
+
+    return failures
+
+
+def main() -> int:
     """Run troubleshooting evaluation."""
     parser = argparse.ArgumentParser(description="Evaluate troubleshooting workflow")
     parser.add_argument(
         "--scenario",
         help="Evaluate only this scenario ID (default: all)",
+    )
+    parser.add_argument(
+        "--threshold-check",
+        action="store_true",
+        help="Exit with code 1 if any metric falls below its threshold",
     )
     args = parser.parse_args()
 
@@ -256,7 +303,7 @@ def main() -> None:
         scenarios = [s for s in scenarios if s["id"] == args.scenario]
         if not scenarios:
             print(f"ERROR: Scenario '{args.scenario}' not found")
-            return
+            return 1
         print(f"Running single scenario: {args.scenario}")
 
     # Load house profile and create workflows
@@ -372,6 +419,18 @@ def main() -> None:
         f"({'All passed' if all_pass else 'Some failed'})"
     )
 
+    # Threshold check
+    if args.threshold_check:
+        failures = check_thresholds(results)
+        if failures:
+            print("\nTHRESHOLD CHECK FAILED:")
+            for f in failures:
+                print(f)
+            return 1
+        print("\nTHRESHOLD CHECK PASSED: All metrics within acceptable range.")
+
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
