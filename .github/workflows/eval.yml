@@ -1,0 +1,88 @@
+# =============================================================================
+# Evaluation Gate — Manual Trigger
+# =============================================================================
+# Runs all eval suites with threshold checks against the OpenAI API.
+# Costs ~$1-2 per full run, so this is manual-only (not on every push).
+#
+# To enable:
+#   1. Add OPENAI_API_KEY as a repository secret (Settings → Secrets → Actions)
+#   2. Uncomment the entire workflow below
+#   3. Trigger from: Actions tab → "Eval Gate" → "Run workflow"
+#
+# Optional: Add LANGFUSE_* secrets if you want traces for eval runs.
+# =============================================================================
+
+# name: Eval Gate
+#
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       suite:
+#         description: "Which eval suite to run"
+#         required: true
+#         default: "all"
+#         type: choice
+#         options:
+#           - all
+#           - rag
+#           - maintenance
+#           - troubleshooting
+#           - parts
+#           - adversarial
+#
+# jobs:
+#   eval:
+#     name: Run Evaluations
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 30
+#     env:
+#       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+#       # Disable Langfuse tracing in eval runs (avoids cost/noise)
+#       OBSERVABILITY__ENABLED: "false"
+#
+#     steps:
+#       - uses: actions/checkout@v4
+#
+#       - uses: astral-sh/setup-uv@v5
+#         with:
+#           version: "latest"
+#           enable-cache: true
+#
+#       - name: Install dependencies
+#         run: uv sync --frozen
+#
+#       - name: Verify API key is set
+#         run: |
+#           if [ -z "$OPENAI_API_KEY" ]; then
+#             echo "::error::OPENAI_API_KEY secret is not set. Add it in Settings → Secrets → Actions."
+#             exit 1
+#           fi
+#           echo "API key configured (${#OPENAI_API_KEY} chars)"
+#
+#       - name: Run RAG eval (100 questions)
+#         if: ${{ inputs.suite == 'all' || inputs.suite == 'rag' }}
+#         run: make eval-threshold
+#
+#       - name: Run maintenance eval
+#         if: ${{ inputs.suite == 'all' || inputs.suite == 'maintenance' }}
+#         run: make eval-maintenance-threshold
+#
+#       - name: Run troubleshooting eval
+#         if: ${{ inputs.suite == 'all' || inputs.suite == 'troubleshooting' }}
+#         run: make eval-troubleshoot-threshold
+#
+#       - name: Run parts eval
+#         if: ${{ inputs.suite == 'all' || inputs.suite == 'parts' }}
+#         run: make eval-parts-threshold
+#
+#       - name: Run adversarial safety eval
+#         if: ${{ inputs.suite == 'all' || inputs.suite == 'adversarial' }}
+#         run: make eval-adversarial-threshold
+#
+#       - name: Upload eval reports
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: eval-reports-${{ github.run_number }}
+#           path: eval/reports/
+#           retention-days: 30

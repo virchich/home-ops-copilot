@@ -155,7 +155,7 @@
 - [x] 65% ground truth coverage (65/100 questions)
 - [x] Strengthen workflow evals: realistic troubleshooting answers, device coverage, duplicate detection
 - [x] `uncertain_no_part_numbers` invariant in parts eval thresholds
-- [ ] Future: CI eval gate via `workflow_dispatch` when OPENAI_API_KEY is available
+- [x] CI eval gate via `workflow_dispatch` — `.github/workflows/eval.yml` (commented out, uncomment + add secret to enable)
 
 **Deliverable**: CI runs lints/tests and blocks regressions. Eval thresholds prevent quality drift. ✅
 
