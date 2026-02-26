@@ -11,12 +11,31 @@ unmodified, and ``init_tracing()`` is a no-op.
 """
 
 import logging
+import os
 from collections.abc import Callable
 from typing import Any
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Propagate OBSERVABILITY__* keys to native LANGFUSE_* env vars eagerly.
+#
+# The Langfuse SDK auto-initialises from LANGFUSE_PUBLIC_KEY / SECRET_KEY
+# the first time it is imported.  Our config uses the OBSERVABILITY__*
+# prefix, so without this bridge the SDK logs a noisy "initialized without
+# public_key" warning.  Using setdefault ensures we never clobber env vars
+# the user set directly.
+# ---------------------------------------------------------------------------
+if settings.observability.enabled:
+    _obs = settings.observability
+    if _obs.langfuse_public_key:
+        os.environ.setdefault("LANGFUSE_PUBLIC_KEY", _obs.langfuse_public_key)
+    if _obs.langfuse_secret_key:
+        os.environ.setdefault("LANGFUSE_SECRET_KEY", _obs.langfuse_secret_key)
+    if _obs.langfuse_base_url:
+        os.environ.setdefault("LANGFUSE_HOST", _obs.langfuse_base_url)
 
 
 def observe(**kwargs: Any) -> Callable[..., Any]:
@@ -59,6 +78,9 @@ def init_tracing() -> None:
     Configures the Langfuse singleton with API keys from settings.
     Only runs when observability is enabled and keys are present.
     Safe to call multiple times (idempotent).
+
+    Note: native ``LANGFUSE_*`` env vars are set at module load time
+    (above) so the SDK's auto-init picks up keys before any import.
     """
     if not settings.observability.enabled:
         logger.debug("Observability disabled; skipping Langfuse init")
