@@ -625,9 +625,9 @@ class TestTroubleshooterIntegration:
         workflow = create_intake_workflow()
         result = workflow.invoke(
             {
-                "device_type": "furnace",
-                "symptom": "Furnace is not producing heat, vents blow cold air",
-                "urgency": "high",
+                "device_type": "hrv",
+                "symptom": "HRV seems loud when running on high speed, is this normal?",
+                "urgency": "low",
                 "house_profile": house_profile,
             }
         )
@@ -671,9 +671,9 @@ class TestTroubleshooterIntegration:
         intake_wf = create_intake_workflow()
         intake_result = intake_wf.invoke(
             {
-                "device_type": "furnace",
-                "symptom": "Furnace making loud banging noise when it starts",
-                "urgency": "medium",
+                "device_type": "hrv",
+                "symptom": "HRV seems loud when running on high speed, is this normal?",
+                "urgency": "low",
                 "house_profile": house_profile,
             }
         )

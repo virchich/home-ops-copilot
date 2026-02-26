@@ -95,6 +95,9 @@ SAFETY_STOP_PATTERNS: dict[str, dict] = {
             "sparking",
             "electrical spark",
             "burning smell electrical",
+            "burning electrical",
+            "electrical panel burning",
+            "electrical panel smell",
             "melting wire",
             "exposed wire",
             "wire sparking",
@@ -107,6 +110,16 @@ SAFETY_STOP_PATTERNS: dict[str, dict] = {
             "hot outlet",
             "scorched outlet",
             "burning outlet",
+        ],
+        # When ALL words in a group appear in the text, trigger safety stop.
+        # This catches non-adjacent patterns like "smell burning near my electrical panel".
+        "co_occurrence_groups": [
+            ["burning", "electrical panel"],
+            ["smell", "electrical panel"],
+            ["smoke", "electrical panel"],
+            ["hot", "electrical panel"],
+            ["burning", "breaker"],
+            ["smoke", "breaker"],
         ],
         "professional": "licensed electrician",
         "message": (
@@ -174,6 +187,7 @@ def check_safety_patterns(symptom: str, device_type: str) -> dict | None:
     combined_text = f"{symptom} {device_type}".lower()
 
     for pattern_name, pattern in SAFETY_STOP_PATTERNS.items():
+        # Check exact substring keywords
         for keyword in pattern["keywords"]:
             if keyword in combined_text:
                 logger.warning(
@@ -184,6 +198,19 @@ def check_safety_patterns(symptom: str, device_type: str) -> dict | None:
                     "professional": pattern["professional"],
                     "message": pattern["message"],
                 }
+
+        # Check co-occurrence groups: all terms in a group must appear in the text
+        for group in pattern.get("co_occurrence_groups", []):
+            if all(term in combined_text for term in group):
+                logger.warning(
+                    f"Safety stop triggered: pattern={pattern_name}, co_occurrence={group}"
+                )
+                return {
+                    "pattern_name": pattern_name,
+                    "professional": pattern["professional"],
+                    "message": pattern["message"],
+                }
+
     return None
 
 
