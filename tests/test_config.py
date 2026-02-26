@@ -62,7 +62,7 @@ class TestSettingsDefaults:
         settings = Settings(openai_api_key="test-key")
         assert settings.llm.model == "gpt-5.2"
         assert settings.llm.temperature == 0.3
-        assert settings.llm.max_completion_tokens == 1000
+        assert settings.llm.max_completion_tokens == 16000
 
 
 class TestSettingsFromEnv:

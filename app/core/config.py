@@ -121,10 +121,10 @@ class LLMSettings(BaseModel):
         le=2.0,
     )
     max_completion_tokens: int = Field(
-        default=1000,
-        description="Maximum tokens in the response",
+        default=16000,
+        description="Maximum tokens in the response (reasoning models like GPT-5.2 need high limits since reasoning tokens count against this budget)",
         ge=100,
-        le=4000,
+        le=32000,
     )
 
 
