@@ -410,7 +410,7 @@ def assess_risk(state: TroubleshootingState) -> dict:
             ],
             response_model=RiskAssessment,
             temperature=0.1,
-            max_completion_tokens=500,
+            max_completion_tokens=8000,
         )
 
         is_safety_stop = assessment.safety_concern and assessment.risk_level == RiskLevel.HIGH
@@ -523,7 +523,7 @@ Generate 2-3 targeted follow-up questions to help diagnose this issue."""
             ],
             response_model=FollowupGenerationResponse,
             temperature=0.3,
-            max_completion_tokens=2000,
+            max_completion_tokens=12000,
         )
 
         logger.info(f"Generated {len(response.followup_questions)} follow-up questions")
@@ -620,7 +620,7 @@ Provide a diagnosis with 3-6 actionable steps to resolve this issue. Remember: t
             ],
             response_model=DiagnosisResponse,
             temperature=0.3,
-            max_completion_tokens=4000,
+            max_completion_tokens=16000,
         )
 
         logger.info(

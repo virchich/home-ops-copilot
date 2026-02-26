@@ -250,7 +250,7 @@ Focus on tasks that are relevant for the {state.season.value} priorities listed 
             ],
             response_model=ChecklistResponse,
             temperature=0.3,  # Lower temperature for more consistent output
-            max_completion_tokens=4000,  # Higher limit for detailed checklist
+            max_completion_tokens=16000,  # Reasoning models need high limits; reasoning tokens count against this budget
         )
 
         checklist_items = response.items

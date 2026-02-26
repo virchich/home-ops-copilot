@@ -225,7 +225,7 @@ Identify the correct replacement parts, filters, and consumables based on the do
             ],
             response_model=PartsLookupResponse,
             temperature=0.2,
-            max_completion_tokens=4000,
+            max_completion_tokens=16000,
         )
 
         logger.info(
