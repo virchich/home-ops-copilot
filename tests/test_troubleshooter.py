@@ -81,6 +81,7 @@ class TestModels:
             why="Indicator color maps to specific error codes",
         )
         assert q.question_type == QuestionType.MULTIPLE_CHOICE
+        assert q.options is not None
         assert len(q.options) == 4
 
     def test_followup_question_free_text(self) -> None:
@@ -218,7 +219,7 @@ class TestModels:
             TroubleshootStartRequest(
                 device_type="furnace",
                 symptom="No heat",
-                urgency="super_urgent",
+                urgency="super_urgent",  # type: ignore[arg-type]
             )
 
     def test_start_request_rejects_long_symptom(self) -> None:

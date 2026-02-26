@@ -1,10 +1,11 @@
-.PHONY: install check test test-unit test-integration eval eval-quick eval-maintenance eval-troubleshoot eval-parts run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
+.PHONY: install check check-ci test test-unit test-integration eval eval-quick eval-maintenance eval-troubleshoot eval-parts run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
 
 # Default target
 help:
 	@echo "Available commands:"
 	@echo "  make install          - Install dependencies with uv"
-	@echo "  make check            - Run static analysis (ruff + mypy)"
+	@echo "  make check            - Run static analysis (ruff + mypy), auto-fixes"
+	@echo "  make check-ci         - Run static analysis (check-only, no auto-fix)"
 	@echo "  make test             - Run all tests (unit + integration)"
 	@echo "  make test-unit        - Run unit tests only (fast, no external deps)"
 	@echo "  make test-integration - Run integration tests only (requires index)"
@@ -30,10 +31,16 @@ help:
 install:
 	uv sync
 
-# Static analysis: lint, format, and type check
+# Static analysis: lint, format, and type check (auto-fixes)
 check:
 	uv run ruff check --fix
 	uv run ruff format
+	uv run mypy .
+
+# Static analysis: check-only mode for CI (no auto-fix, fails on issues)
+check-ci:
+	uv run ruff check
+	uv run ruff format --check
 	uv run mypy .
 
 # Run all tests (unit + integration)

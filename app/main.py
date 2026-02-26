@@ -341,7 +341,7 @@ def troubleshoot_start(request: TroubleshootStartRequest) -> TroubleshootStartRe
     return TroubleshootStartResponse(
         session_id=session_id,
         phase=result.get("phase", TroubleshootPhase.FOLLOWUP),
-        risk_level=result.get("risk_level"),
+        risk_level=result["risk_level"],
         followup_questions=result.get("followup_questions", []),
         preliminary_assessment=result.get("preliminary_assessment"),
         is_safety_stop=result.get("is_safety_stop", False),
@@ -408,7 +408,7 @@ def troubleshoot_diagnose(request: TroubleshootDiagnoseRequest) -> TroubleshootD
         session_id=request.session_id,
         diagnosis_summary=result.get("diagnosis_summary", ""),
         diagnostic_steps=result.get("diagnostic_steps", []),
-        overall_risk_level=result.get("overall_risk_level"),
+        overall_risk_level=result["overall_risk_level"],
         when_to_call_professional=result.get("when_to_call_professional", ""),
         markdown=result.get("markdown_output", ""),
         sources_used=sources_used,

@@ -19,7 +19,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
-def observe(**kwargs: Any) -> Callable:
+def observe(**kwargs: Any) -> Callable[..., Any]:
     """Decorator that traces function execution via Langfuse when enabled.
 
     When observability is enabled, delegates to ``langfuse.decorators.observe()``.
@@ -42,7 +42,7 @@ def observe(**kwargs: Any) -> Callable:
         try:
             from langfuse import observe as langfuse_observe
 
-            return langfuse_observe(**kwargs)
+            return langfuse_observe(**kwargs)  # type: ignore[no-any-return]
         except ImportError:
             logger.warning("langfuse not installed; @observe() is a no-op")
 

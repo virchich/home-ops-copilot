@@ -252,6 +252,7 @@ class TestModels:
             query="y" * 2000,
             device_type="x" * 100,
         )
+        assert req.device_type is not None
         assert len(req.query) == 2000
         assert len(req.device_type) == 100
 
