@@ -80,6 +80,42 @@ export async function generateMaintenancePlan(season: Season): Promise<Maintenan
   return response.json();
 }
 
+/**
+ * Download a .ics calendar file for the given season's maintenance plan.
+ *
+ * The backend runs the full maintenance workflow and converts the
+ * checklist into iCalendar events. The returned blob is saved as a file.
+ */
+export async function downloadMaintenanceIcs(season: Season): Promise<void> {
+  const response = await fetch(`${API_URL}/maintenance-plan/ics`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ season }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new ApiError(
+      `Request failed with status ${response.status}`,
+      response.status,
+      errorBody.detail
+    );
+  }
+
+  // Download the .ics file from the response blob
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${season}-maintenance-reminders.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function getHouseProfile(): Promise<HouseProfile> {
   const response = await fetch(`${API_URL}/house-profile`);
 

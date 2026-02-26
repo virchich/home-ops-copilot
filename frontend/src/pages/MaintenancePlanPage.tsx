@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { HouseProfile, Season, MaintenancePlanResponse } from '../types';
-import { getHouseProfile, updateHouseProfile, generateMaintenancePlan } from '../api/client';
+import { getHouseProfile, updateHouseProfile, generateMaintenancePlan, downloadMaintenanceIcs } from '../api/client';
 import { SeasonSelector } from '../components/SeasonSelector';
 import { ChecklistDisplay } from '../components/ChecklistDisplay';
 import { HouseProfileEditor } from '../components/HouseProfileEditor';
@@ -15,6 +15,7 @@ export function MaintenancePlanPage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDownloadingCalendar, setIsDownloadingCalendar] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Load house profile on mount
@@ -62,6 +63,20 @@ export function MaintenancePlanPage() {
       setError(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleDownloadCalendar = async () => {
+    if (!selectedSeason) return;
+    setIsDownloadingCalendar(true);
+    setError(null);
+
+    try {
+      await downloadMaintenanceIcs(selectedSeason);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate calendar');
+    } finally {
+      setIsDownloadingCalendar(false);
     }
   };
 
@@ -204,6 +219,8 @@ export function MaintenancePlanPage() {
               season={plan.season}
               houseName={plan.house_name}
               sourcesUsed={plan.sources_used}
+              onDownloadCalendar={handleDownloadCalendar}
+              isDownloadingCalendar={isDownloadingCalendar}
             />
           </section>
         )}

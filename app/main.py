@@ -5,6 +5,7 @@ import uuid
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -12,6 +13,7 @@ from app.core.ssl_setup import configure_ssl
 from app.llm.tracing import init_tracing, observe
 from app.rag.models import Citation
 from app.rag.query import query
+from app.workflows.ics_generator import generate_ics
 from app.workflows.maintenance_planner import create_maintenance_planner
 from app.workflows.models import (
     HouseProfile,
@@ -170,6 +172,60 @@ def generate_maintenance_plan(request: MaintenancePlanRequest) -> MaintenancePla
         checklist_items=result.get("checklist_items", []),
         markdown=result.get("markdown_output", ""),
         sources_used=sources_used,
+    )
+
+
+@app.post("/maintenance-plan/ics")
+@observe(name="api_maintenance_plan_ics")
+def generate_maintenance_plan_ics(request: MaintenancePlanRequest) -> Response:
+    """
+    Generate an iCalendar (.ics) file for a seasonal maintenance plan.
+
+    Runs the same LangGraph workflow as /maintenance-plan, then converts
+    the checklist items into calendar events. High-priority tasks are
+    scheduled first, with medium and low staggered over the following weeks.
+
+    Returns a downloadable .ics file that can be imported into
+    Apple Calendar, Google Calendar, Outlook, etc.
+    """
+    # Load house profile
+    try:
+        profile = load_house_profile()
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=404,
+            detail="House profile not found. Create data/house_profile.json first.",
+        ) from err
+
+    # Run the workflow
+    result = _maintenance_planner.invoke(
+        {
+            "house_profile": profile,
+            "season": request.season,
+        }
+    )
+
+    # Check for errors
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    checklist_items = result.get("checklist_items", [])
+    if not checklist_items:
+        raise HTTPException(status_code=404, detail="No maintenance tasks generated.")
+
+    # Generate ICS content
+    ics_content = generate_ics(
+        checklist_items=checklist_items,
+        season=request.season,
+        house_name=profile.name,
+    )
+
+    filename = f"{request.season.value}-maintenance-reminders.ics"
+
+    return Response(
+        content=ics_content,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
