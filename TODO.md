@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 9 Complete
+**Phase**: Week 10 In Progress
 **Last Updated**: 2026-02-26
-**Current Focus**: Evaluation v2 + regression gates
+**Current Focus**: Red-teaming + safety tightening
 
 ---
 
@@ -165,11 +165,17 @@
 
 **Goal**: Ensure safe behavior under adversarial inputs.
 
-- [ ] Test prompts that try to force unsafe DIY advice
-- [ ] Ensure the system refuses high-risk step-by-step and escalates to professionals
-- [ ] "Overconfidence" test: must cite or must say uncertain
+- [x] Adversarial test suite: 18 scenarios across 4 categories (prompt injection, safety bypass, overconfidence, risk accuracy)
+- [x] Standalone adversarial eval runner with 100% pass rate threshold for safety-critical categories
+- [x] SSL fix: `truststore` integration for corporate proxy environments (Cisco/Umbrella)
+- [x] Langfuse env var bridge: propagate `OBSERVABILITY__*` to native `LANGFUSE_*` env vars
+- [x] Disable Langfuse tracing in eval runners (no cost/noise during evals)
+- [x] Prompt hardening: anti-injection, anti-hallucination, overconfidence guards in all 4 system prompts
+- [x] 33 safety regression unit tests (prompt invariants, safety patterns, golden file integrity)
+- [ ] Run adversarial eval and fix any failures (blocked until full eval completes)
+- [ ] Update TODO.md with final results
 
-**Deliverable**: Safer behavior under adversarial questions.
+**Deliverable**: Safer behavior under adversarial questions. ✅
 
 ---
 
@@ -215,6 +221,30 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-02-26** - Week 10: Red-teaming + Safety Tightening
+- **Phase 1: Adversarial eval runner** — `eval/adversarial_golden.json` + `eval/run_adversarial_eval.py`
+  - 18 scenarios across 4 categories: prompt_injection (3), safety_bypass (4), overconfidence (5), risk_accuracy (4), maintenance (2)
+  - Standalone runner routes scenarios to correct workflow (ask, troubleshoot, parts, maintenance)
+  - Thresholds: overall_pass_rate ≥ 0.85, safety_critical_pass_rate = 100% (prompt_injection + safety_bypass)
+  - Makefile targets: `eval-adversarial`, `eval-adversarial-threshold`, added to `eval-check-all`
+- **Infra fixes: SSL + Langfuse**
+  - SSL: Diagnosed Cisco SSL inspection proxy causing `SSL_CERTIFICATE_VERIFY_FAILED`. Added `truststore` package + `app/core/ssl_setup.py` to use OS cert store. Wired into all 6 entrypoints.
+  - Langfuse env bridge: `OBSERVABILITY__*` config now propagated to native `LANGFUSE_*` env vars at import time (suppresses "initialized without public_key" warning)
+  - Disabled Langfuse tracing in all 5 eval runners (`OBSERVABILITY__ENABLED=false` before app imports)
+- **Phase 2: Prompt hardening** — All 4 system prompts strengthened:
+  - `query.py`: Added anti-injection paragraph, "do NOT fabricate" rule, unknown topic disclosure (rule 7)
+  - `troubleshooter.py`: Strengthened anti-injection wording, added "do NOT fabricate procedures" (rule 6), sparse docs acknowledgment (rule 8)
+  - `parts_helper.py`: Added overconfidence guard (rule 10: empty list when docs lack info)
+  - `maintenance_planner.py`: Added anti-injection paragraph (was entirely missing), anti-fabrication rules 7-8
+- **Phase 4: Safety regression tests** — `tests/test_safety_regression.py` (33 tests)
+  - `TestPromptSafetyInvariants`: All prompts have anti-injection, anti-hallucination, professional recommendation language
+  - `TestAdversarialSafetyPatterns`: Deterministic patterns catch adversarial inputs (sulfur smell, CO detector, burning electrical, injection attempts)
+  - `TestSafetyKeywordCoverage`: All 5 hazard categories present, ≥3 keywords each, actionable messages, specific trades
+  - `TestAdversarialGoldenIntegrity`: Golden file well-formed, valid workflows/categories, ≥15 scenarios, safety-critical scenarios have risk expectations
+- Key files: `eval/adversarial_golden.json`, `eval/run_adversarial_eval.py`, `app/core/ssl_setup.py`, `app/llm/tracing.py`, `tests/test_safety_regression.py`
+- Tests: 327 unit tests, all passing
+- Full RAG eval running in background (100 questions)
 
 **2026-02-26** - Week 9: Evaluation v2 + Regression Gates
 - **Phase 1: Light CI** — GitHub Actions workflow (`.github/workflows/ci.yml`)
@@ -505,6 +535,10 @@ These are the first things to tackle in Week 1:
 | 2026-02-26 | GitHub Actions CI with make commands | CI mirrors local dev workflow; 2,000 free min/month on private repos |
 | 2026-02-26 | Fixed metric thresholds (not relative) | Prevents gradual quality degradation; each commit must meet absolute floors |
 | 2026-02-26 | Eval runs not in CI (yet) | Require OPENAI_API_KEY + cost; plan `workflow_dispatch` trigger for manual eval gates |
+| 2026-02-26 | truststore for SSL | Corporate proxy injects Cisco CA; truststore bridges OS cert store to httpx/OpenAI SDK |
+| 2026-02-26 | Langfuse disabled in eval runners | Evals don't need tracing; avoids cost and noisy auth errors |
+| 2026-02-26 | Standalone adversarial eval runner | Separate from main RAG eval; different thresholds and safety-critical 100% requirement |
+| 2026-02-26 | Anti-injection in all prompts | Even maintenance planner (no direct user input) gets hardened for defense in depth |
 
 ---
 
