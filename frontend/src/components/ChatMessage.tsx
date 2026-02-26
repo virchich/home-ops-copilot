@@ -6,6 +6,7 @@ import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/pris
 import { RiskBadge } from './RiskBadge';
 import { CitationList } from './CitationList';
 import { ContextDrawer } from './ContextDrawer';
+import { copyToClipboard, formatMessageAsMarkdown } from '../utils/export';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -31,12 +32,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const handleCopy = async () => {
     if (!message.response) return;
 
-    try {
-      await navigator.clipboard.writeText(message.response.answer);
+    const markdown = formatMessageAsMarkdown(
+      message.question,
+      message.response.answer,
+      message.response.risk_level,
+      message.response.citations,
+    );
+    const ok = await copyToClipboard(markdown);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
     }
   };
 

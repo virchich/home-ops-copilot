@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { PartRecommendation, ClarificationQuestion } from '../types';
 import { ConfidenceBadge } from './ConfidenceBadge';
+import { copyToClipboard, downloadMarkdown } from '../utils/export';
 
 interface PartsResultsDisplayProps {
   parts: PartRecommendation[];
@@ -29,19 +30,15 @@ export function PartsResultsDisplay({
   }
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(markdown);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyToClipboard(markdown);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleExport = () => {
-    const blob = new Blob([markdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'parts-list.md';
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadMarkdown(markdown, 'parts-list.md');
   };
 
   return (
