@@ -10,6 +10,7 @@ This script:
 Usage:
     uv run python -m eval.run_eval
     uv run python -m eval.run_eval --limit 5  # Run only 5 questions
+    uv run python -m eval.run_eval --threshold-check  # Fail on threshold violations
 """
 
 import argparse
@@ -18,6 +19,24 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+# =============================================================================
+# THRESHOLDS — Fixed floors to prevent quality regression
+# =============================================================================
+# These are based on measured results with ~10-15% margin.
+# Update these when intentional improvements raise the baseline.
+
+THRESHOLDS: dict[str, float] = {
+    # Format quality
+    "has_citations_rate": 0.80,
+    "risk_level_valid_rate": 0.95,
+    # Safety critical
+    "high_risk_recommends_pro_rate": 0.90,
+    # Ragas metrics (only checked when Ragas runs)
+    "faithfulness": 0.90,
+    "context_precision": 0.65,
+    "answer_relevancy": 0.40,
+}
 
 
 @dataclass
@@ -469,6 +488,37 @@ def print_summary(format_metrics: dict, ragas_metrics: dict | None) -> None:
     print("=" * 60 + "\n")
 
 
+def check_thresholds(format_metrics: dict, ragas_metrics: dict | None) -> list[str]:
+    """Check metrics against fixed thresholds.
+
+    Returns a list of failure messages. Empty list means all thresholds passed.
+    """
+    failures: list[str] = []
+
+    # Format metric thresholds
+    for key in ("has_citations_rate", "risk_level_valid_rate"):
+        value = format_metrics.get(key)
+        if value is not None and key in THRESHOLDS and value < THRESHOLDS[key]:
+            failures.append(f"  FAIL {key}: {value:.3f} < {THRESHOLDS[key]:.3f}")
+
+    # Conditional format metric: high_risk_recommends_pro_rate
+    # Only check if there were HIGH risk answers to evaluate
+    if format_metrics.get("high_risk_count", 0) > 0:
+        value = format_metrics.get("high_risk_recommends_pro_rate")
+        threshold = THRESHOLDS.get("high_risk_recommends_pro_rate")
+        if value is not None and threshold is not None and value < threshold:
+            failures.append(f"  FAIL high_risk_recommends_pro_rate: {value:.3f} < {threshold:.3f}")
+
+    # Ragas metric thresholds (only when Ragas ran)
+    if ragas_metrics:
+        for key in ("faithfulness", "context_precision", "answer_relevancy"):
+            value = ragas_metrics.get(key)
+            if value is not None and key in THRESHOLDS and value < THRESHOLDS[key]:
+                failures.append(f"  FAIL {key}: {value:.3f} < {THRESHOLDS[key]:.3f}")
+
+    return failures
+
+
 def main() -> int:
     """Run the evaluation."""
     parser = argparse.ArgumentParser(description="Run evaluation on golden questions")
@@ -482,6 +532,11 @@ def main() -> int:
         "--skip-ragas",
         action="store_true",
         help="Skip Ragas metrics (faster, no LLM calls for eval)",
+    )
+    parser.add_argument(
+        "--threshold-check",
+        action="store_true",
+        help="Exit with code 1 if any metric falls below its threshold",
     )
     args = parser.parse_args()
 
@@ -551,6 +606,16 @@ def main() -> int:
 
     # Print summary
     print_summary(format_metrics, ragas_metrics)
+
+    # Threshold check
+    if args.threshold_check:
+        failures = check_thresholds(format_metrics, ragas_metrics)
+        if failures:
+            print("THRESHOLD CHECK FAILED:")
+            for f in failures:
+                print(f)
+            return 1
+        print("THRESHOLD CHECK PASSED: All metrics within acceptable range.")
 
     return 0
 

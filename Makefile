@@ -1,4 +1,4 @@
-.PHONY: install check check-ci test test-unit test-integration eval eval-quick eval-maintenance eval-troubleshoot eval-parts run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
+.PHONY: install check check-ci test test-unit test-integration eval eval-quick eval-threshold eval-maintenance eval-maintenance-threshold eval-troubleshoot eval-troubleshoot-threshold eval-parts eval-parts-threshold eval-check-all run ingest ingest-rebuild check-docs clean clean-reports frontend-install frontend-dev frontend-build docker-up docker-down docker-build help
 
 # Default target
 help:
@@ -11,9 +11,14 @@ help:
 	@echo "  make test-integration - Run integration tests only (requires index)"
 	@echo "  make eval             - Run evaluation on golden questions"
 	@echo "  make eval-quick       - Run evaluation on 5 questions (quick test)"
+	@echo "  make eval-threshold   - Run RAG eval with threshold gate"
 	@echo "  make eval-maintenance - Run maintenance plan evaluation (all seasons)"
+	@echo "  make eval-maintenance-threshold - Run maintenance eval with threshold gate"
 	@echo "  make eval-troubleshoot - Run troubleshooting workflow evaluation"
+	@echo "  make eval-troubleshoot-threshold - Run troubleshoot eval with threshold gate"
 	@echo "  make eval-parts       - Run parts helper evaluation (8 scenarios)"
+	@echo "  make eval-parts-threshold - Run parts eval with threshold gate"
+	@echo "  make eval-check-all   - Run all evals with threshold gates (requires OPENAI_API_KEY)"
 	@echo "  make run              - Start FastAPI development server"
 	@echo "  make ingest           - Run document ingestion (uses existing index if available)"
 	@echo "  make ingest-rebuild   - Force rebuild the vector index from scratch"
@@ -74,6 +79,29 @@ eval-troubleshoot:
 # Run parts helper evaluation (8 golden scenarios)
 eval-parts:
 	uv run python -m eval.run_parts_eval
+
+# Run RAG eval with threshold gate (fails on regression)
+eval-threshold:
+	uv run python -m eval.run_eval --threshold-check
+
+# Run maintenance eval with threshold gate (fails on regression)
+eval-maintenance-threshold:
+	uv run python -m eval.run_maintenance_eval --threshold-check
+
+# Run troubleshooting eval with threshold gate (fails on regression)
+eval-troubleshoot-threshold:
+	uv run python -m eval.run_troubleshooting_eval --threshold-check
+
+# Run parts eval with threshold gate (fails on regression)
+eval-parts-threshold:
+	uv run python -m eval.run_parts_eval --threshold-check
+
+# Run all evals with threshold gates (requires OPENAI_API_KEY)
+eval-check-all:
+	uv run python -m eval.run_eval --threshold-check
+	uv run python -m eval.run_maintenance_eval --threshold-check
+	uv run python -m eval.run_troubleshooting_eval --threshold-check
+	uv run python -m eval.run_parts_eval --threshold-check
 
 # Start FastAPI development server
 run:

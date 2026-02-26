@@ -10,13 +10,26 @@ This script:
 Usage:
     uv run python -m eval.run_maintenance_eval
     uv run python -m eval.run_maintenance_eval --season winter  # Single season
+    uv run python -m eval.run_maintenance_eval --threshold-check  # Fail on regression
 """
 
 import argparse
 import json
+import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
+
+# =============================================================================
+# THRESHOLDS — Fixed floors to prevent quality regression
+# =============================================================================
+
+THRESHOLDS: dict[str, float] = {
+    # Overall pass rate across all season checks
+    "overall_pass_rate": 0.80,
+    # Minimum source coverage percentage (per season)
+    "source_coverage_pct": 50.0,
+}
 
 
 @dataclass
@@ -169,13 +182,62 @@ def generate_report(results: list[SeasonEvalResult], criteria: dict) -> str:
     return "\n".join(lines)
 
 
-def main() -> None:
+def check_thresholds(results: list[SeasonEvalResult]) -> list[str]:
+    """Check results against fixed thresholds.
+
+    Returns a list of failure messages. Empty list means all thresholds passed.
+    """
+    failures: list[str] = []
+
+    # Overall pass rate: each season contributes 2 checks (min_items, min_high_priority)
+    total_checks = 0
+    total_passed = 0
+    for r in results:
+        total_checks += 2
+        if r.meets_min_items:
+            total_passed += 1
+        if r.meets_min_high_priority:
+            total_passed += 1
+
+    if total_checks > 0:
+        pass_rate = total_passed / total_checks
+        threshold = THRESHOLDS["overall_pass_rate"]
+        if pass_rate < threshold:
+            failures.append(f"  FAIL overall_pass_rate: {pass_rate:.3f} < {threshold:.3f}")
+
+    # Source coverage per season
+    source_threshold = THRESHOLDS["source_coverage_pct"]
+    for r in results:
+        if r.source_coverage_pct < source_threshold:
+            failures.append(
+                f"  FAIL source_coverage ({r.season}): "
+                f"{r.source_coverage_pct:.1f}% < {source_threshold:.1f}%"
+            )
+
+    # Markdown quality: every season should produce markdown with checkboxes
+    for r in results:
+        if not r.has_markdown:
+            failures.append(f"  FAIL has_markdown ({r.season}): no markdown output")
+        if not r.markdown_has_checkboxes:
+            failures.append(
+                f"  FAIL markdown_has_checkboxes ({r.season}): no checkboxes in markdown"
+            )
+
+    return failures
+
+
+def main() -> int:
     """Run maintenance plan evaluation."""
     parser = argparse.ArgumentParser(description="Evaluate maintenance plans")
     parser.add_argument(
         "--season",
         choices=["spring", "summer", "fall", "winter"],
         help="Evaluate only this season (default: all)",
+    )
+    parser.add_argument(
+        "--threshold-check",
+        action="store_true",
+        help="Exit with code 1 if any metric falls below its threshold",
     )
     args = parser.parse_args()
 
@@ -259,6 +321,18 @@ def main() -> None:
     print()
     print(f"Overall: {'✅ All checks passed' if all_pass else '❌ Some checks failed'}")
 
+    # Threshold check
+    if args.threshold_check:
+        failures = check_thresholds(results)
+        if failures:
+            print("\nTHRESHOLD CHECK FAILED:")
+            for f in failures:
+                print(f)
+            return 1
+        print("\nTHRESHOLD CHECK PASSED: All metrics within acceptable range.")
+
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
