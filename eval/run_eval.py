@@ -521,6 +521,10 @@ def check_thresholds(format_metrics: dict, ragas_metrics: dict | None) -> list[s
 
 def main() -> int:
     """Run the evaluation."""
+    from app.core.ssl_setup import configure_ssl
+
+    configure_ssl()
+
     parser = argparse.ArgumentParser(description="Run evaluation on golden questions")
     parser.add_argument(
         "--limit",

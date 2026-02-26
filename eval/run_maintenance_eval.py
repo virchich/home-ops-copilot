@@ -279,6 +279,10 @@ def check_thresholds(results: list[SeasonEvalResult]) -> list[str]:
 
 def main() -> int:
     """Run maintenance plan evaluation."""
+    from app.core.ssl_setup import configure_ssl
+
+    configure_ssl()
+
     parser = argparse.ArgumentParser(description="Evaluate maintenance plans")
     parser.add_argument(
         "--season",
