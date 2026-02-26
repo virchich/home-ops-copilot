@@ -18,6 +18,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -55,11 +56,12 @@ class ScenarioEvalResult:
     checks_total: int = 0
 
 
-def load_golden_scenarios() -> dict:
+def load_golden_scenarios() -> dict[str, Any]:
     """Load golden scenarios from troubleshooting_golden.json."""
     golden_path = Path(__file__).parent / "troubleshooting_golden.json"
     with open(golden_path) as f:
-        return json.load(f)
+        result: dict[str, Any] = json.load(f)
+        return result
 
 
 def evaluate_intake(
