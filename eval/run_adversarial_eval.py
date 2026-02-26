@@ -482,6 +482,10 @@ def check_thresholds(results: list[AdversarialResult]) -> list[str]:
 
 def main() -> int:
     """Run adversarial evaluation."""
+    import os
+
+    os.environ["OBSERVABILITY__ENABLED"] = "false"
+
     from app.core.ssl_setup import configure_ssl
 
     configure_ssl()

@@ -363,6 +363,10 @@ def check_thresholds(results: list[ScenarioEvalResult]) -> list[str]:
 
 def main() -> int:
     """Run troubleshooting evaluation."""
+    import os
+
+    os.environ["OBSERVABILITY__ENABLED"] = "false"
+
     from app.core.ssl_setup import configure_ssl
 
     configure_ssl()

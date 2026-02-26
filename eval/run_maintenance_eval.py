@@ -279,6 +279,10 @@ def check_thresholds(results: list[SeasonEvalResult]) -> list[str]:
 
 def main() -> int:
     """Run maintenance plan evaluation."""
+    import os
+
+    os.environ["OBSERVABILITY__ENABLED"] = "false"
+
     from app.core.ssl_setup import configure_ssl
 
     configure_ssl()
