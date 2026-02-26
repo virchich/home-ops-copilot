@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { DiagnosticStep, RiskLevel } from '../types';
 import { RiskBadge } from './RiskBadge';
+import { copyToClipboard, downloadMarkdown } from '../utils/export';
 
 interface DiagnosticStepsDisplayProps {
   diagnosisSummary: string;
@@ -18,28 +20,18 @@ export function DiagnosticStepsDisplay({
   markdown,
   sourcesUsed,
 }: DiagnosticStepsDisplayProps) {
+  const [copied, setCopied] = useState(false);
+
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(markdown);
-    } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea');
-      textarea.value = markdown;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+    const ok = await copyToClipboard(markdown);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   const handleExport = () => {
-    const blob = new Blob([markdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'troubleshooting-diagnosis.md';
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadMarkdown(markdown, 'troubleshooting-diagnosis.md');
   };
 
   const stepRiskStyles: Record<RiskLevel, string> = {
@@ -128,7 +120,7 @@ export function DiagnosticStepsDisplay({
           onClick={handleCopy}
           className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
         >
-          Copy Markdown
+          {copied ? 'Copied!' : 'Copy Markdown'}
         </button>
         <button
           onClick={handleExport}

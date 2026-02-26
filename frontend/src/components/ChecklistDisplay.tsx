@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Season, ChecklistItem } from '../types';
+import { copyToClipboard, downloadMarkdown } from '../utils/export';
 
 interface ChecklistDisplayProps {
   checklistItems: ChecklistItem[];
@@ -7,6 +8,8 @@ interface ChecklistDisplayProps {
   season: Season;
   houseName: string;
   sourcesUsed: string[];
+  onDownloadCalendar?: () => void;
+  isDownloadingCalendar?: boolean;
 }
 
 const priorityConfig = {
@@ -75,26 +78,18 @@ function TaskCard({ item }: { item: ChecklistItem }) {
   );
 }
 
-export function ChecklistDisplay({ checklistItems, markdown, season, houseName, sourcesUsed }: ChecklistDisplayProps) {
+export function ChecklistDisplay({ checklistItems, markdown, season, houseName, sourcesUsed, onDownloadCalendar, isDownloadingCalendar }: ChecklistDisplayProps) {
   const [copied, setCopied] = useState(false);
 
   const handleExport = () => {
-    const blob = new Blob([markdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${season}-maintenance-plan.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadMarkdown(markdown, `${season}-maintenance-plan.md`);
   };
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(markdown);
+    const ok = await copyToClipboard(markdown);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
     }
   };
 
@@ -145,6 +140,19 @@ export function ChecklistDisplay({ checklistItems, markdown, season, houseName, 
             </svg>
             Export
           </button>
+          {onDownloadCalendar && (
+            <button
+              onClick={onDownloadCalendar}
+              disabled={isDownloadingCalendar}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Download calendar reminders (.ics)"
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {isDownloadingCalendar ? 'Generating...' : 'Calendar'}
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Chat, ChatMessage } from '../types';
+import { downloadMarkdown } from '../utils/export';
 
 const STORAGE_KEY = 'home-ops-copilot-chats';
 
@@ -184,15 +185,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const header = `# ${chat.title}\n\n*Exported: ${new Date().toLocaleString()}*\n\n---\n\n`;
     const fullMarkdown = header + markdown;
 
-    const blob = new Blob([fullMarkdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `chat-${new Date().toISOString().split('T')[0]}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadMarkdown(fullMarkdown, `chat-${new Date().toISOString().split('T')[0]}.md`);
   }, [chats]);
 
   const clearCurrentChat = useCallback(() => {
