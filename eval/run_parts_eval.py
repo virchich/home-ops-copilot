@@ -325,6 +325,10 @@ def check_thresholds(results: list[ScenarioEvalResult]) -> list[str]:
 
 def main() -> int:
     """Run parts helper evaluation."""
+    from app.core.ssl_setup import configure_ssl
+
+    configure_ssl()
+
     parser = argparse.ArgumentParser(description="Evaluate parts helper workflow")
     parser.add_argument(
         "--scenario",

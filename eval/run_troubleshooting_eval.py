@@ -363,6 +363,10 @@ def check_thresholds(results: list[ScenarioEvalResult]) -> list[str]:
 
 def main() -> int:
     """Run troubleshooting evaluation."""
+    from app.core.ssl_setup import configure_ssl
+
+    configure_ssl()
+
     parser = argparse.ArgumentParser(description="Evaluate troubleshooting workflow")
     parser.add_argument(
         "--scenario",

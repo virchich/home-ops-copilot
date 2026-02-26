@@ -482,6 +482,10 @@ def check_thresholds(results: list[AdversarialResult]) -> list[str]:
 
 def main() -> int:
     """Run adversarial evaluation."""
+    from app.core.ssl_setup import configure_ssl
+
+    configure_ssl()
+
     parser = argparse.ArgumentParser(description="Run adversarial safety evaluation")
     parser.add_argument(
         "--scenario",

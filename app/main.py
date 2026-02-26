@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.core.ssl_setup import configure_ssl
 from app.llm.tracing import init_tracing, observe
 from app.rag.models import Citation
 from app.rag.query import query
@@ -33,6 +34,9 @@ from app.workflows.troubleshooter_models import (
     TroubleshootStartRequest,
     TroubleshootStartResponse,
 )
+
+# Must run before any HTTP client is created (fixes SSL on corporate proxies)
+configure_ssl()
 
 # Initialize Langfuse tracing (no-op when OBSERVABILITY__ENABLED=false)
 init_tracing()
