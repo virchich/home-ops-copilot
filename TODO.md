@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 10 Complete
+**Phase**: Week 11 Complete
 **Last Updated**: 2026-02-26
-**Current Focus**: Week 10 complete — Red-teaming + safety tightening done
+**Current Focus**: Week 11 complete — Polish + exports done
 
 ---
 
@@ -185,11 +185,16 @@
 
 **Goal**: Make it actually usable day-to-day.
 
-- [ ] Export outputs as clean Markdown blocks (Apple Notes copy/paste)
-- [ ] Optional: generate .ics reminders for seasonal tasks
-- [ ] Add "house profile" file to personalize outputs
+- [x] Extract shared `utils/export.ts` with `copyToClipboard()` and `downloadMarkdown()`
+- [x] Fix ChatMessage copy to include full Q&A (question + answer + risk + citations)
+- [x] Fix PartsResultsDisplay missing error handling on copy
+- [x] Fix DiagnosticStepsDisplay missing copy feedback (Copied! indicator)
+- [x] Consolidate 5 duplicate copy/export handlers into 2 shared utilities
+- [x] Generate .ics calendar reminders for seasonal maintenance tasks
+- [x] Write README.md (architecture, setup, evaluation, limitations)
+- [ ] ~~Add "house profile" file to personalize outputs~~ (already done in Week 5)
 
-**Deliverable**: You actually use it weekly.
+**Deliverable**: You actually use it weekly. ✅
 
 ---
 
@@ -223,6 +228,40 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-02-26** - Week 11: Polish + Exports
+- **Phase 1: Export DRY + Polish**
+  - Created `frontend/src/utils/export.ts` with 3 shared utilities:
+    - `copyToClipboard()` — Clipboard API with textarea fallback for older browsers
+    - `downloadMarkdown()` — Blob URL download with cleanup
+    - `formatMessageAsMarkdown()` — Formats chat Q&A with citations + risk level
+  - Updated 5 components to use shared utilities (was 3 different copy patterns, 1 with no error handling):
+    - `ChatMessage.tsx` — Now copies full Q&A block (was: answer text only)
+    - `DiagnosticStepsDisplay.tsx` — Added "Copied!" feedback, uses shared utils
+    - `ChecklistDisplay.tsx` — Uses shared utils
+    - `PartsResultsDisplay.tsx` — Added error handling (was: raw `navigator.clipboard.writeText()` with no try/catch)
+    - `ChatContext.tsx` — Uses shared `downloadMarkdown()`
+  - Eliminated ~100 lines of duplicated copy/export code across components
+- **Phase 2: .ics Calendar Reminders**
+  - Created `app/workflows/ics_generator.py` — RFC 5545 iCalendar generation without third-party library
+    - All-day events staggered by priority (high: day 1, medium: +7d, low: +14d)
+    - Proper text escaping, line folding, CRLF endings per spec
+    - Categories from device type, iCalendar priority mapping (1/5/9)
+    - Season-aware date calculation (next upcoming season start)
+  - Added `POST /maintenance-plan/ics` endpoint in `app/main.py`
+    - Runs full maintenance workflow, converts checklist to .ics, returns as download
+    - Content-Type: `text/calendar`, Content-Disposition attachment
+  - Frontend integration:
+    - Added `downloadMaintenanceIcs()` to `api/client.ts`
+    - Added green "Calendar" button to `ChecklistDisplay.tsx` (with loading state)
+    - Wired through `MaintenancePlanPage.tsx` via `onDownloadCalendar` prop
+  - 32 unit tests in `tests/test_ics_generator.py` (escaping, folding, dates, events, priorities)
+- **Phase 3: README.md**
+  - Wrote comprehensive README: what it does, architecture diagram, tech stack, setup instructions
+  - Documented evaluation approach (RAG, workflow, adversarial), development workflow, known limitations
+- Key files: `frontend/src/utils/export.ts`, `app/workflows/ics_generator.py`, `app/main.py`, `README.md`
+- Tests: 280 unit tests passing (32 new ICS tests)
+- **Week 11 Complete!** Ready for Week 12 (Demo + write-up)
 
 **2026-02-26** - Week 10: Red-teaming + Safety Tightening
 - **Phase 1: Adversarial eval runner** — `eval/adversarial_golden.json` + `eval/run_adversarial_eval.py`
@@ -550,6 +589,9 @@ These are the first things to tackle in Week 1:
 | 2026-02-26 | Anti-injection in all prompts | Even maintenance planner (no direct user input) gets hardened for defense in depth |
 | 2026-02-26 | max_completion_tokens 16000 default | GPT-5.2 reasoning models consume tokens for internal reasoning; 1000-4000 caused empty outputs |
 | 2026-02-26 | Co-occurrence keyword groups | Substring matching too brittle for non-adjacent keywords; co-occurrence catches "burning...electrical panel" |
+| 2026-02-26 | Shared export utilities (DRY) | 5 components had 3 different copy patterns; centralized with browser fallback |
+| 2026-02-26 | ICS without third-party library | RFC 5545 spec is simple enough for VEVENT generation; avoids adding `icalendar` dependency |
+| 2026-02-26 | Priority-staggered calendar events | High→day 1, Medium→+7d, Low→+14d prevents overwhelming the homeowner |
 
 ---
 
