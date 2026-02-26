@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase**: Week 11 Complete
+**Phase**: Week 12 Complete
 **Last Updated**: 2026-02-26
-**Current Focus**: Week 11 complete — Polish + exports done
+**Current Focus**: Week 12 complete — Portfolio polish
 
 ---
 
@@ -203,9 +203,17 @@
 **Goal**: Portfolio-ready capstone.
 
 - [ ] 3–5 min demo video: RAG answer + 3 workflows + eval dashboard + trace debug
-- [ ] README: architecture, evaluation approach, known limitations, next steps
+- [x] README: architecture, evaluation approach, known limitations, next steps
+- [x] Fix `pyproject.toml` placeholder description + add authors/keywords/license
+- [x] Fix `frontend/package.json` metadata (name, version, description, author)
+- [x] Add meta description to `frontend/index.html`
+- [x] Document all env vars in `.env.example` (was 3 lines, now comprehensive)
+- [x] Add API tags to all 9 endpoints (grouped in Swagger UI)
+- [x] Add OpenAPI tag descriptions for Swagger documentation
+- [x] Add structured logging to `app/main.py` (request/response logging)
+- [x] Pin Docker base images to specific versions (reproducible builds)
 
-**Deliverable**: Portfolio-ready capstone that shows production thinking.
+**Deliverable**: Portfolio-ready capstone that shows production thinking. ✅
 
 ---
 
@@ -228,6 +236,34 @@ These are the first things to tackle in Week 1:
 ### Session Log
 
 <!-- Add entries in reverse chronological order -->
+
+**2026-02-26** - Week 12: Portfolio Polish
+- **Phase 1: Metadata & Identity**
+  - Fixed `pyproject.toml` placeholder description ("Add your description here" → actual description)
+  - Added `authors`, `license`, `keywords` fields to pyproject.toml
+  - Fixed `frontend/package.json`: name "frontend" → "home-ops-copilot-frontend", version 0.0.0 → 0.1.0
+  - Added `description` and `author` fields to package.json
+  - Added `<meta name="description">` to `frontend/index.html`
+- **Phase 2: .env.example Documentation**
+  - Rewrote `.env.example` from 3 sparse lines to comprehensive documented file
+  - All config groups covered: Required (API key), LLM, RAG, Paths, Observability, App
+  - Every variable has description, default value, and example format
+  - References `app/core/config.py` for full settings documentation
+- **Phase 3: API Documentation Polish**
+  - Added `tags` to all 9 FastAPI endpoints (chat, maintenance, troubleshooting, parts, house-profile, system)
+  - Added `openapi_tags` with descriptions to FastAPI app constructor
+  - Swagger UI now groups endpoints by feature area with descriptions
+- **Phase 4: Structured Logging**
+  - Added `logging.basicConfig()` with timestamp format to `app/main.py`
+  - Added logger to workflow compilation startup, ask (risk + citation count), maintenance (season + items + sources), troubleshoot/start (session + risk + safety_stop), parts/lookup (query + parts + gaps)
+  - Log format: `2026-02-26 10:00:00 INFO [app.main] message`
+- **Phase 5: Docker Image Pinning**
+  - Backend: `python:3.13-slim` → `python:3.13.5-slim`
+  - Frontend build: `node:22-alpine` → `node:22.17-alpine`
+  - Frontend serve: `nginx:alpine` → `nginx:1.27-alpine`
+- Key files: `pyproject.toml`, `frontend/package.json`, `frontend/index.html`, `.env.example`, `app/main.py`, `Dockerfile.backend`, `frontend/Dockerfile`
+- Tests: 359 unit tests passing
+- **Week 12 Complete!** Demo video remaining (user will handle separately)
 
 **2026-02-26** - Week 11: Polish + Exports
 - **Phase 1: Export DRY + Polish**
@@ -592,6 +628,9 @@ These are the first things to tackle in Week 1:
 | 2026-02-26 | Shared export utilities (DRY) | 5 components had 3 different copy patterns; centralized with browser fallback |
 | 2026-02-26 | ICS without third-party library | RFC 5545 spec is simple enough for VEVENT generation; avoids adding `icalendar` dependency |
 | 2026-02-26 | Priority-staggered calendar events | High→day 1, Medium→+7d, Low→+14d prevents overwhelming the homeowner |
+| 2026-02-26 | OpenAPI tags for all endpoints | Groups endpoints in Swagger UI by feature area; better for portfolio demos |
+| 2026-02-26 | Structured logging in main.py | Logs key metrics per request (risk level, item counts, safety stops) without verbosity |
+| 2026-02-26 | Pin Docker base image versions | Reproducible builds; prevents surprise breakage from upstream tag updates |
 
 ---
 

@@ -2,7 +2,7 @@
 # Multi-stage build: Node for building, nginx for serving
 
 # Stage 1: Build
-FROM node:22-alpine AS builder
+FROM node:22.17-alpine AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ ENV VITE_API_URL=/api
 RUN npm run build
 
 # Stage 2: Serve with nginx
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 # Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html

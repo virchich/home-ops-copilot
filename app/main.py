@@ -1,5 +1,6 @@
 """FastAPI application for Home Ops Copilot."""
 
+import logging
 import time
 import uuid
 
@@ -37,6 +38,16 @@ from app.workflows.troubleshooter_models import (
     TroubleshootStartResponse,
 )
 
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
 # Must run before any HTTP client is created (fixes SSL on corporate proxies)
 configure_ssl()
 
@@ -47,6 +58,23 @@ app = FastAPI(
     title="Home Ops Copilot",
     description="RAG-powered assistant for home maintenance, troubleshooting, and parts management",
     version="0.1.0",
+    openapi_tags=[
+        {
+            "name": "chat",
+            "description": "Ask questions about your home systems — answers with citations and risk levels",
+        },
+        {
+            "name": "maintenance",
+            "description": "Generate seasonal maintenance plans and calendar reminders",
+        },
+        {"name": "troubleshooting", "description": "Guided troubleshooting with safety guardrails"},
+        {"name": "parts", "description": "Look up replacement parts and consumables"},
+        {
+            "name": "house-profile",
+            "description": "Manage your house profile (equipment, location, etc.)",
+        },
+        {"name": "system", "description": "Health checks and system status"},
+    ],
 )
 
 # =============================================================================
@@ -59,6 +87,8 @@ _maintenance_planner = create_maintenance_planner()
 _parts_helper = create_parts_helper()
 _intake_workflow = create_intake_workflow()
 _diagnosis_workflow = create_diagnosis_workflow()
+
+logger.info("All LangGraph workflows compiled successfully")
 
 # CORS middleware for frontend development
 app.add_middleware(
@@ -96,13 +126,13 @@ class AskResponse(BaseModel):
 # =============================================================================
 
 
-@app.get("/health")
+@app.get("/health", tags=["system"])
 def health_check() -> dict:
     """Health check endpoint."""
     return {"status": "healthy"}
 
 
-@app.post("/ask", response_model=AskResponse)
+@app.post("/ask", response_model=AskResponse, tags=["chat"])
 @observe(name="api_ask")
 def ask(request: AskRequest) -> AskResponse:
     """
@@ -118,6 +148,8 @@ def ask(request: AskRequest) -> AskResponse:
 
     result = query(request.question)
 
+    logger.info("ask: risk_level=%s citations=%d", result.risk_level.value, len(result.citations))
+
     return AskResponse(
         answer=result.answer,
         citations=result.citations,  # No conversion needed - same model
@@ -126,7 +158,7 @@ def ask(request: AskRequest) -> AskResponse:
     )
 
 
-@app.post("/maintenance-plan", response_model=MaintenancePlanResponse)
+@app.post("/maintenance-plan", response_model=MaintenancePlanResponse, tags=["maintenance"])
 @observe(name="api_maintenance_plan")
 def generate_maintenance_plan(request: MaintenancePlanRequest) -> MaintenancePlanResponse:
     """
@@ -166,6 +198,13 @@ def generate_maintenance_plan(request: MaintenancePlanRequest) -> MaintenancePla
         {item.source_doc for item in result.get("checklist_items", []) if item.source_doc}
     )
 
+    logger.info(
+        "maintenance-plan: season=%s items=%d sources=%d",
+        request.season.value,
+        len(result.get("checklist_items", [])),
+        len(sources_used),
+    )
+
     return MaintenancePlanResponse(
         season=request.season,
         house_name=profile.name,
@@ -175,7 +214,7 @@ def generate_maintenance_plan(request: MaintenancePlanRequest) -> MaintenancePla
     )
 
 
-@app.post("/maintenance-plan/ics")
+@app.post("/maintenance-plan/ics", tags=["maintenance"])
 @observe(name="api_maintenance_plan_ics")
 def generate_maintenance_plan_ics(request: MaintenancePlanRequest) -> Response:
     """
@@ -229,7 +268,7 @@ def generate_maintenance_plan_ics(request: MaintenancePlanRequest) -> Response:
     )
 
 
-@app.get("/house-profile", response_model=HouseProfile)
+@app.get("/house-profile", response_model=HouseProfile, tags=["house-profile"])
 def get_house_profile() -> HouseProfile:
     """
     Get the current house profile.
@@ -245,7 +284,7 @@ def get_house_profile() -> HouseProfile:
         ) from err
 
 
-@app.put("/house-profile", response_model=HouseProfile)
+@app.put("/house-profile", response_model=HouseProfile, tags=["house-profile"])
 def update_house_profile(profile: HouseProfile) -> HouseProfile:
     """
     Update the house profile.
@@ -262,7 +301,7 @@ def update_house_profile(profile: HouseProfile) -> HouseProfile:
 # =============================================================================
 
 
-@app.post("/parts/lookup", response_model=PartsLookupAPIResponse)
+@app.post("/parts/lookup", response_model=PartsLookupAPIResponse, tags=["parts"])
 @observe(name="api_parts_lookup")
 def parts_lookup(request: PartsLookupRequest) -> PartsLookupAPIResponse:
     """
@@ -305,6 +344,13 @@ def parts_lookup(request: PartsLookupRequest) -> PartsLookupAPIResponse:
     # Extract unique source documents
     sources_used = sorted({part.source_doc for part in result.get("parts", []) if part.source_doc})
 
+    logger.info(
+        "parts/lookup: query=%r parts=%d has_gaps=%s",
+        request.query[:50],
+        len(result.get("parts", [])),
+        bool(result.get("clarification_questions")),
+    )
+
     return PartsLookupAPIResponse(
         parts=result.get("parts", []),
         clarification_questions=result.get("clarification_questions", []),
@@ -340,7 +386,7 @@ def _evict_expired_sessions() -> None:
         _troubleshoot_sessions.pop(sid, None)
 
 
-@app.post("/troubleshoot/start", response_model=TroubleshootStartResponse)
+@app.post("/troubleshoot/start", response_model=TroubleshootStartResponse, tags=["troubleshooting"])
 @observe(name="api_troubleshoot_start")
 def troubleshoot_start(request: TroubleshootStartRequest) -> TroubleshootStartResponse:
     """
@@ -398,6 +444,14 @@ def troubleshoot_start(request: TroubleshootStartRequest) -> TroubleshootStartRe
     )
     _troubleshoot_sessions[session_id] = (time.monotonic(), session_state)
 
+    logger.info(
+        "troubleshoot/start: session=%s risk=%s safety_stop=%s questions=%d",
+        session_id[:8],
+        result["risk_level"],
+        result.get("is_safety_stop", False),
+        len(result.get("followup_questions", [])),
+    )
+
     return TroubleshootStartResponse(
         session_id=session_id,
         phase=result.get("phase", TroubleshootPhase.FOLLOWUP),
@@ -410,7 +464,9 @@ def troubleshoot_start(request: TroubleshootStartRequest) -> TroubleshootStartRe
     )
 
 
-@app.post("/troubleshoot/diagnose", response_model=TroubleshootDiagnoseResponse)
+@app.post(
+    "/troubleshoot/diagnose", response_model=TroubleshootDiagnoseResponse, tags=["troubleshooting"]
+)
 @observe(name="api_troubleshoot_diagnose")
 def troubleshoot_diagnose(request: TroubleshootDiagnoseRequest) -> TroubleshootDiagnoseResponse:
     """

@@ -1,5 +1,5 @@
 # Backend Dockerfile for Home Ops Copilot
-FROM python:3.13-slim
+FROM python:3.13.5-slim AS base
 
 WORKDIR /app
 
