@@ -153,7 +153,7 @@ class TestMaintenancePlannerUnit:
     def test_house_profile_loads(self, house_profile: HouseProfile) -> None:
         """House profile should load from default path."""
         assert house_profile is not None
-        assert house_profile.name == "Main Residence"
+        assert house_profile.name == "Sample Residence"
         assert len(house_profile.systems) > 0
 
     def test_planner_compiles(self, planner: CompiledStateGraph) -> None:
