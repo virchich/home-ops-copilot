@@ -12,6 +12,9 @@ wheels/
 # Environment variables (secrets)
 .env
 
+# Local Docker overrides (machine-specific)
+docker-compose.override.yml
+
 # IDE
 .idea/
 .vscode/
