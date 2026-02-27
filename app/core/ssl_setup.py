@@ -1,12 +1,12 @@
-"""SSL certificate setup for environments with corporate proxies.
+"""SSL certificate setup for environments with custom CA bundles.
 
 Injects ``truststore`` so that Python's ``ssl`` module (and by extension
 ``httpx``, the OpenAI SDK, etc.) uses the **operating-system certificate
 store** instead of the bundled ``certifi`` CA file.
 
-This fixes SSL_CERTIFICATE_VERIFY_FAILED errors in environments where a
-corporate SSL-inspection proxy (e.g. Cisco Umbrella) injects its own CA
-that the OS trusts but ``certifi`` does not.
+This fixes SSL_CERTIFICATE_VERIFY_FAILED errors in environments where an
+SSL-inspection proxy injects its own CA that the OS trusts but
+``certifi`` does not.
 
 Call ``configure_ssl()`` once, early in each entrypoint (FastAPI startup,
 eval runners, CLI scripts) — before any HTTP client is created.

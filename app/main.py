@@ -48,7 +48,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Must run before any HTTP client is created (fixes SSL on corporate proxies)
+# Must run before any HTTP client is created (fixes SSL with custom CA bundles)
 configure_ssl()
 
 # Initialize Langfuse tracing (no-op when OBSERVABILITY__ENABLED=false)
