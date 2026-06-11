@@ -1,19 +1,31 @@
 # Home Ops Copilot
 
-A RAG-powered assistant for home maintenance, troubleshooting, and parts management. Ingests equipment manuals and documentation, then provides cited answers with risk assessments and safety guardrails.
+[![CI](https://github.com/virchich/home-ops-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/virchich/home-ops-copilot/actions/workflows/ci.yml)
+
+A RAG-powered assistant for home maintenance, troubleshooting, and parts management. Ingests equipment manuals and
+documentation, then provides cited answers with risk assessments and safety guardrails.
+
+Demo project demonstrating RAG, workflow orchestration, evaluations, safety checks, and full-stack app structure.
+Intended for local experimentation, not production use.
 
 ## What It Does
 
 **Ask questions** about your home systems and get answers grounded in your actual manuals — not generic internet advice.
 
-- **Chat** — Ask anything about your furnace, HRV, water heater, etc. Every answer includes citations, risk level, and a professional recommendation when needed.
-- **Seasonal Maintenance Planner** — Generate a prioritized checklist for any season based on your house profile and equipment docs. Export as Markdown or download calendar reminders (.ics).
-- **Troubleshooting Wizard** — Guided intake → follow-up questions → diagnostic steps. Two-layer safety system (deterministic + LLM) stops dangerous scenarios before generating DIY advice.
-- **Parts & Consumables Helper** — Identify correct replacement parts with confidence levels (Confirmed / Likely / Uncertain). Asks clarifying questions when information is incomplete.
+- **Chat** — Ask anything about your furnace, HRV, water heater, etc. Every answer includes citations, risk level, and a
+  professional recommendation when needed.
+- **Seasonal Maintenance Planner** — Generate a prioritized checklist for any season based on your house profile and
+  equipment docs. Export as Markdown or download calendar reminders (.ics).
+- **Troubleshooting Wizard** — Guided intake → follow-up questions → diagnostic steps. Two-layer safety system (
+  deterministic + LLM) stops dangerous scenarios before generating DIY advice.
+- **Parts & Consumables Helper** — Identify correct replacement parts with confidence levels (Confirmed / Likely /
+  Uncertain). Asks clarifying questions when information is incomplete.
 
 ### Safety First
 
-Every response includes a risk assessment (LOW / MED / HIGH). High-risk topics involving gas, electrical, carbon monoxide, or structural work trigger an immediate safety stop with professional referral — no DIY instructions are generated.
+Every response includes a risk assessment (LOW / MED / HIGH). High-risk topics involving gas, electrical, carbon
+monoxide, or structural work trigger an immediate safety stop with professional referral — no DIY instructions are
+generated.
 
 ## Architecture
 
@@ -48,35 +60,35 @@ Every response includes a risk assessment (LOW / MED / HIGH). High-risk topics i
 └──────────────────────────────────────────────────┘
          │
     ┌────┴────┐
-    │ OpenAI  │  GPT-5.2 + text-embedding-3-small
+    │ OpenAI  │  configurable chat model + text-embedding-3-small
     └─────────┘
 ```
 
 ### Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| LlamaIndex for RAG | Good balance of features and simplicity |
-| LangGraph for workflows | Explicit control flow over pure agents |
-| instructor for LLM outputs | Pydantic-validated structured outputs |
-| Two-layer safety | Deterministic patterns catch known hazards fast; LLM handles nuance |
-| Local-first persistence | File-based vector index, no database setup needed |
-| Feature-flagged Langfuse | Zero overhead when disabled; full tracing when enabled |
+| Decision                   | Rationale                                                           |
+|----------------------------|---------------------------------------------------------------------|
+| LlamaIndex for RAG         | Good balance of features and simplicity                             |
+| LangGraph for workflows    | Explicit control flow over pure agents                              |
+| instructor for LLM outputs | Pydantic-validated structured outputs                               |
+| Two-layer safety           | Deterministic patterns catch known hazards fast; LLM handles nuance |
+| Local-first persistence    | File-based vector index, no database setup needed                   |
+| Feature-flagged Langfuse   | Zero overhead when disabled; full tracing when enabled              |
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Language | Python 3.13 |
-| Package Manager | uv |
-| API | FastAPI |
-| RAG | LlamaIndex (text-embedding-3-small) |
-| Workflows | LangGraph |
-| LLM | OpenAI GPT-5.2 (via instructor) |
-| Observability | Langfuse (opt-in) |
-| Evaluation | Ragas + custom rule-based evals |
-| Frontend | React + TypeScript + Tailwind CSS |
-| CI | GitHub Actions (ruff + mypy + pytest) |
+| Layer           | Technology                                                         |
+|-----------------|--------------------------------------------------------------------|
+| Language        | Python 3.13                                                        |
+| Package Manager | uv                                                                 |
+| API             | FastAPI                                                            |
+| RAG             | LlamaIndex (text-embedding-3-small)                                |
+| Workflows       | LangGraph                                                          |
+| LLM             | Configurable OpenAI chat model, default `gpt-5.2` (via instructor) |
+| Observability   | Langfuse (opt-in)                                                  |
+| Evaluation      | Ragas + custom rule-based evals                                    |
+| Frontend        | React + TypeScript + Tailwind CSS                                  |
+| CI              | GitHub Actions (ruff + mypy + pytest)                              |
 
 ## Getting Started
 
@@ -91,7 +103,7 @@ Every response includes a risk assessment (LOW / MED / HIGH). High-risk topics i
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/home-ops-copilot.git
+git clone https://github.com/virchich/home-ops-copilot.git
 cd home-ops-copilot
 make install
 
@@ -99,8 +111,8 @@ make install
 cp .env.example .env
 # Edit .env and add your OPENAI_API_KEY
 
-# Ingest your documents
-# Place PDF manuals in data/raw_docs/ and update data/metadata.json
+# Ingest your local documents
+# Add your own PDF manuals to data/raw_docs/ and update data/metadata.json
 make ingest-rebuild
 
 # Start the backend
@@ -113,6 +125,120 @@ make frontend-dev
 
 The app is now running at `http://localhost:5173` (frontend) and `http://localhost:8000` (API).
 
+### Document Data
+
+This repository does not include, redistribute, display, or claim ownership of equipment manuals. To run the RAG
+pipeline locally, add your own PDFs to `data/raw_docs/` and update `data/metadata.json` so each `file_name` matches a
+local PDF. Files under `data/raw_docs/*.pdf` are intentionally ignored by git.
+
+Example `data/metadata.json` structure:
+
+```json
+{
+  "documents": [
+    {
+      "file_name": "york-s9v2b-installation-manual.pdf",
+      "device_type": "furnace",
+      "device_name": "S9V2B080U3PSA",
+      "manufacturer": "York",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": [
+        "hvac",
+        "heating",
+        "gas"
+      ],
+      "description": "Gas furnace installation and operation manual"
+    },
+    {
+      "file_name": "honeywell-t10-pro-setup-guide.pdf",
+      "device_type": "thermostat",
+      "device_name": "T10 Pro",
+      "manufacturer": "Honeywell",
+      "doc_type": "manual",
+      "location": "main_floor",
+      "tags": [
+        "hvac",
+        "smart_home",
+        "climate_control"
+      ],
+      "description": "Honeywell T10 Pro smart thermostat setup guide"
+    },
+    {
+      "file_name": "square-d-200a-panel-manual.pdf",
+      "device_type": "energy_meter",
+      "device_name": "200A",
+      "manufacturer": "Square D",
+      "doc_type": "manual",
+      "location": "outside",
+      "tags": [
+        "electrical",
+        "monitoring",
+        "power"
+      ],
+      "description": "Main panel meter installation and operation manual"
+    },
+    {
+      "file_name": "kenmore-350-water-softener-manual.pdf",
+      "device_type": "water_softener",
+      "device_name": "350",
+      "manufacturer": "Kenmore",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": [
+        "water",
+        "plumbing",
+        "filtration"
+      ],
+      "description": "Water softener control valve manual"
+    },
+    {
+      "file_name": "rheem-xg40t-owners-manual.pdf",
+      "device_type": "water_heater",
+      "device_name": "XG40T06EC36U1",
+      "manufacturer": "Rheem",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": [
+        "water",
+        "plumbing",
+        "gas",
+        "heating"
+      ],
+      "description": "Gas residential water heater owner's manual"
+    },
+    {
+      "file_name": "honeywell-he360-installation-manual.pdf",
+      "device_type": "humidifier",
+      "device_name": "HE360A1075",
+      "manufacturer": "Honeywell",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": [
+        "hvac",
+        "humidity",
+        "air_quality"
+      ],
+      "description": "Powered flow-through humidifier installation and owner's manual"
+    },
+    {
+      "file_name": "venmar-shr2501-owners-manual.pdf",
+      "device_type": "hrv",
+      "device_name": "SHR-2501",
+      "manufacturer": "Venmar",
+      "doc_type": "manual",
+      "location": "basement",
+      "tags": [
+        "hvac",
+        "ventilation",
+        "air_quality"
+      ],
+      "description": "Heat Recovery Ventilator owner's manual"
+    }
+  ]
+}
+```
+
 ### Docker
 
 ```bash
@@ -123,6 +249,8 @@ make docker-up
 # Stop
 make docker-down
 ```
+
+With Docker, the frontend is served at `http://localhost:3000` and the API remains at `http://localhost:8000`.
 
 ## Project Structure
 
@@ -156,17 +284,21 @@ tests/              # 350+ tests (unit + integration)
 The project uses a multi-layered evaluation approach to prevent quality drift:
 
 ### RAG Evaluation (100 questions)
+
 - **Ragas metrics**: Faithfulness, context precision, answer relevancy
 - **Custom metrics**: Citation rate, risk level validity, HIGH→professional rate
 - **Threshold gates**: Every metric has a floor (e.g., faithfulness ≥ 0.90)
 
 ### Workflow Evaluations
+
 - **Maintenance**: Source coverage ≥ 50%, markdown formatting, no duplicate tasks
 - **Troubleshooting**: Safety stop accuracy = 100% (invariant), realistic diagnostic steps
 - **Parts**: Confirmed parts must have sources, uncertain parts must not have part numbers
 
 ### Adversarial Safety Evaluation (18 scenarios)
+
 Tests across 4 categories:
+
 - **Prompt injection** — system ignores injected override instructions
 - **Safety bypass** — refuses unsafe advice regardless of claimed experience
 - **Overconfidence** — indicates uncertainty when knowledge base lacks info
@@ -200,6 +332,7 @@ make help           # See all available commands
 ### CI Pipeline
 
 GitHub Actions runs on every push/PR to main:
+
 1. **Lint** — ruff check + ruff format --check + mypy
 2. **Test** — pytest (unit tests, no API key needed)
 
@@ -208,11 +341,11 @@ Eval runs are manual (`make eval-check-all`) since they require an OpenAI API ke
 ## Known Limitations
 
 - **Single-user local app** — session storage is in-memory, no auth
-- **7 documents** — knowledge base is limited to the ingested manuals
+- **No bundled manuals** — the knowledge base depends on manuals you add locally
 - **English only** — prompts and safety patterns are English-language
 - **No real-time updates** — documents must be re-ingested after changes
 - **Reranking disabled** — cross-encoder reranker hurt quality on technical docs; kept as opt-in
 
 ## License
 
-Private project — not licensed for redistribution.
+Source visible for review/demo only.
